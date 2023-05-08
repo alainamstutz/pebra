@@ -23,8 +23,8 @@ library(msm)
 ```
 
 ```{r}
-"data/"
-```
 
+```
+infinifn
 
 
