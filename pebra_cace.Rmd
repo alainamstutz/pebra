@@ -25,7 +25,6 @@ library(msm)
 ```{r}
 
 ```
-THIRD
 
 ```{r cace_iv}
 
