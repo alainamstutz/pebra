@@ -20,15 +20,195 @@ library(data.table)
 library(writexl)
 library(lme4)
 library(msm)
-```
-
-```{r}
 
 ```
 
-```{r cace_iv}
+```{r load data, include=FALSE}
+enrolment <- read_excel("data/0m_enrolment.xls")
+twelve_month <- read_excel("data/12m_status_VL_ART_20210505.xls")
+# all intervention peer educators
+pe_1 <- read_excel("data/cheezy_pa.xls")
+pe_2 <- read_excel("data/itu_pa.xls")
+pe_3 <- read_excel("data/johnnie_pa.xls")
+pe_4 <- read_excel("data/leekay_pa.xls")
+pe_5 <- read_excel("data/luciah_pa.xls")
+pe_6 <- read_excel("data/mc_pa.xls")
+pe_7 <- read_excel("data/more1_pa.xls")
+pe_8 <- read_excel("data/nono_pa.xls")
+pe_9 <- read_excel("data/sk_pa.xls")
+pe_10 <- read_excel("data/tlikso_pa.xls")
 
 ```
 
+```{r data management characteristics, include=FALSE}
+# merge pa's from different intervention clinics
+all_panogender <- bind_rows(pe_1,pe_2,pe_3,pe_4,pe_4,pe_5,pe_6,pe_7,pe_8,pe_9,pe_10)
+## add gender
+all_pa <- merge(all_panogender, enrolment[, c("GENDER", "IND_ID")], by = "IND_ID")
+# delete duplicates
+all_pa_cleaned <- c()
+noduplicates_frame <- c()
 
+## all rows from unique ID
+for (j in unique(all_pa$IND_ID)){
+  ## safe in temporary df
+  noduplicates_frame <- all_pa[which(all_pa$IND_ID==j),]
+  ## order df by date
+  noduplicates_frame <- noduplicates_frame[order(noduplicates_frame$DATE_CREATED),]
+  if (nrow(noduplicates_frame) > 1) {
+    ## every row in df
+    for (rec in (nrow(noduplicates_frame)-1):1) {
+      ## compare with next to follow
+      if (noduplicates_frame$DATE_CREATED [rec] == noduplicates_frame$DATE_CREATED [rec+1]){
+        ## if they have an identical date, delete first row
+        noduplicates_frame <- noduplicates_frame [-rec,]
+      }
+    }
+  }
+  ## merge data frames from single patients into one df again
+  all_pa_cleaned <- bind_rows(all_pa_cleaned, noduplicates_frame)
+}
+
+all_pa_2 <- all_pa %>% 
+  distinct()
+
+all_pa <- all_pa_cleaned
+
+# recode all true and false (and NA) to numeric
+all_pa[all_pa == "true"] <- 1
+all_pa[all_pa == "false"] <- 2
+all_pa[is.na(all_pa)] <- 0
+
+# replace refill with SCC if ART Refill = yes and SUPPORT SCC = yes (= SCC wished and available)
+table(all_pa$SUPPORT_SCC, useNA = "always")
+all_pa$SUPPORT_SCC <- as.numeric(all_pa$SUPPORT_SCC)
+table(all_pa$ART_REFILL_1, useNA = "always")
+all_pa$ART_REFILL_1 <- as.numeric(all_pa$ART_REFILL_1)
+all_pa <- all_pa %>%
+  mutate(ART_REFILL_1 = case_when(SUPPORT_SCC == 1 & ART_REFILL_1 == 1 ~ 6,
+                                   TRUE ~ c(ART_REFILL_1)))
+
+# Add 12m STATUS
+all_pa <- merge(all_pa, twelve_month[, c("STATUS", "STATUS_DETAIL", "IND_ID")], by = "IND_ID")
+# reclassify the confirmed transfer out as "out of care"
+class(all_pa$STATUS)
+all_pa <- all_pa %>% 
+  mutate(STATUS = case_when(STATUS == "in care" & STATUS_DETAIL == "transfer" ~ "out of care",
+                            TRUE ~ c(STATUS)))
+
+# Add pregnancy/breastfeeding
+all_pa <- merge(all_pa, enrolment[, c("Pregnant", "Breastfeeding", "IND_ID")], by = "IND_ID")
+
+# Add transmission way
+all_pa <- merge(all_pa, enrolment[, c("infection_way", "IND_ID")], by = "IND_ID")
+table(all_pa$infection_way, useNA = "always")
+class(all_pa$infection_way)
+all_pa <- all_pa %>% 
+  mutate(infection_mode = case_when(infection_way == "Through my mother" ~ "vertical",
+                                    infection_way == "Blood products" | infection_way == "Sex with a man" 
+                                    | infection_way == "Sex with a woman" ~ "horizontal",
+                                    TRUE ~ c(infection_way)))
+
+```
+
+```{r data management preference data, include=FALSE}
+# Add arm variable and enrollment date
+all_pa <- merge(all_pa, enrolment[, c("ARM", "DATE_ENROL", "IND_ID")], by = "IND_ID")
+
+# Preference assessment per ID
+unique(all_pa$IND_ID)
+all_pa %>%
+  summarise(median = median(table(IND_ID)),
+            IQR = IQR(table(IND_ID)),
+            Q1 = quantile(table(IND_ID), probs = 0.25),
+            Q3 = quantile(table(IND_ID), probs = 0.75))
+
+## sort our first, middle and last assessment of each patient
+start_pa <- data.frame()
+end_pa <- data.frame()
+mid_pa <- data.frame()
+
+# loop all PAs by participant
+for (j in unique(all_pa$IND_ID)){
+  # put all assessments of patient in one df
+  id_frame <- all_pa[which(all_pa$IND_ID==j),]
+  # order df by assessment date
+  id_frame <- id_frame[order(id_frame$DATE_CREATED),]
+  # START PA: safe first row = first assessment of patient in new df
+  start_id_frame <- head(id_frame, n=1)
+  colnames(start_id_frame) <- paste0(colnames(start_id_frame),"_start")
+  # MID PA: between 5 and 7 months from first assessment
+  mid_id_new <- id_frame[as.Date(id_frame$DATE_CREATED) < (as.Date(id_frame$DATE_CREATED[1]) + months(7)),]
+  mid_id_new <- id_frame[as.Date(id_frame$DATE_CREATED) >= (as.Date(id_frame$DATE_CREATED[1]) + months(5)),]
+  # chose first option if there is multiple
+  mid_id_frame <- head(mid_id_new, n=1)
+  colnames(mid_id_frame) <- paste0(colnames(mid_id_frame),"_mid")
+  # LAST PA: safe last row = last assessment of patient in new df
+  end_id_frame <- tail(id_frame, n=1)
+  colnames(end_id_frame) <- paste0(colnames(end_id_frame),"_end")
+  # bind first assessments from all patients to new df
+  start_pa <- bind_rows(start_pa, start_id_frame)
+  # bind middle assessments from all patients to new df
+  mid_pa <- bind_rows(mid_pa, mid_id_frame)
+  # bind last assessments from all patients to new df
+  end_pa <- bind_rows(end_pa, end_id_frame)
+}
+
+start_pa <- start_pa %>% 
+  select(IND_ID_start, PE_start, ID_start, DATE_CREATED_start, TIME_CREATED_start, DATE_ENROL_start, everything())
+end_pa <- end_pa %>% 
+  select(IND_ID_end, PE_end, ID_end, DATE_CREATED_end, TIME_CREATED_end, DATE_ENROL_end, everything())
+mid_pa <- mid_pa %>% 
+  select(IND_ID_mid, PE_mid, ID_mid, DATE_CREATED_mid, TIME_CREATED_mid, DATE_ENROL_mid, everything())
+
+# tableone <- tableone::CreateTableOne(data = start_pa,vars = start_pa_vars[!start_pa_vars == "GENDER"],strata = "GENDER",includeNA = TRUE,test = FALSE,addOverall = TRUE)
+# 
+# capture.output(tableone <- print(tableone, nonnormal = start_pa_vars,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = FALSE))
+#
+# #print
+# knitr::kable(tableone,caption = "Baseline assessment of Notifications, missing values in categorical variables: NAs")
+
+```
+
+```{r work with baseline PA, include=FALSE}
+# rename variables that we don't want to be double
+start_pa <- start_pa %>% 
+  rename(IND_ID = IND_ID_start, GENDER = GENDER_start, 
+         STATUS = STATUS_start, STATUS_DETAIL = STATUS_DETAIL_start)
+
+# Unpack Support Option String
+class(start_pa$SUPPORT_start)
+unique(start_pa$SUPPORT_start)
+table(start_pa$SUPPORT_start)
+library(stringr)
+start_pa$SUPPORT_start2 <- strsplit(start_pa$SUPPORT_start, ", ")
+class(start_pa$SUPPORT_start2)
+
+start_pa <- start_pa %>% ## classify nurse support only as No, everyone else chose some pe support
+  mutate(pe_support = case_when(grepl("1", SUPPORT_start) == TRUE & 
+                                  grepl("2", SUPPORT_start) == FALSE & 
+                                  grepl("3", SUPPORT_start) == FALSE &
+                                  grepl("4", SUPPORT_start) == FALSE &
+                                  grepl("5", SUPPORT_start) == FALSE &
+                                  grepl("6", SUPPORT_start) == FALSE &
+                                  grepl("7", SUPPORT_start) == FALSE &
+                                  grepl("8", SUPPORT_start) == FALSE &
+                                  grepl("9", SUPPORT_start) == FALSE &
+                                  grepl("10", SUPPORT_start) == FALSE &
+                                  grepl("11", SUPPORT_start) == FALSE &
+                                  grepl("12", SUPPORT_start) == FALSE &
+                                  grepl("13", SUPPORT_start) == FALSE &
+                                  grepl("14", SUPPORT_start) == FALSE ~ "No",
+                             TRUE ~ "Yes"))
+start_pa %>% ## reclassify the one who wanted no support at all as "nurse support only" / "no PE support"
+  mutate(pe_support = case_when(grepl("14", SUPPORT_start) == TRUE ~ "No",
+                             TRUE ~ c(pe_support)))
+
+table(start_pa$pe_support, useNA = "always")
+
+# what to do with those that chose nurse + those on-the-spot options such as cds demo? -> for now leave them in PE support
+
+
+
+```
 
