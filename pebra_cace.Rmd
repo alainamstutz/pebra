@@ -209,6 +209,5 @@ table(start_pa$pe_support, useNA = "always")
 # what to do with those that chose nurse + those on-the-spot options such as cds demo? -> for now leave them in PE support
 
 
-
 ```
 
