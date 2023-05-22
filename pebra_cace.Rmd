@@ -3,15 +3,15 @@ title: "PEBRA Complier Average Causal Effect Analyses"
 author: "A.Amstutz"
 date: "2023-05-07"
 output:
-  word_document:
-    toc: yes
-  pdf_document:
-    toc: yes
   html_document:
     keep_md: yes
     toc: yes
     toc_float: yes
     code_folding: hide
+  pdf_document:
+    toc: yes
+  word_document:
+    toc: yes
 ---
 
 ```{r load packages, include=FALSE}
