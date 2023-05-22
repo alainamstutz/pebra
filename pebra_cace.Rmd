@@ -3,13 +3,15 @@ title: "PEBRA Complier Average Causal Effect Analyses"
 author: "A.Amstutz"
 date: "2023-05-07"
 output:
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
   html_document:
     keep_md: yes
     toc: yes
     toc_float: yes
     code_folding: hide
-  pdf_document:
-    toc: yes
 ---
 
 ```{r load packages, include=FALSE}
@@ -26,6 +28,7 @@ library(msm)
 ```{r load data, include=FALSE}
 enrolment <- read_excel("data/0m_enrolment.xls")
 twelve_month <- read_excel("data/12m_status_VL_ART_20210505.xls")
+baseline_VL <- read_excel("data/0m_VL_2xlsx.xls")
 # all intervention peer educators
 pe_1 <- read_excel("data/cheezy_pa.xls")
 pe_2 <- read_excel("data/itu_pa.xls")
@@ -40,80 +43,61 @@ pe_10 <- read_excel("data/tlikso_pa.xls")
 
 ```
 
-```{r data management characteristics, include=FALSE}
+```{r data management characteristics PAs, include=FALSE}
 # merge pa's from different intervention clinics
-all_panogender <- bind_rows(pe_1,pe_2,pe_3,pe_4,pe_4,pe_5,pe_6,pe_7,pe_8,pe_9,pe_10)
-## add gender
-all_pa <- merge(all_panogender, enrolment[, c("GENDER", "IND_ID")], by = "IND_ID")
+all_pa <- bind_rows(pe_1,pe_2,pe_3,pe_4,pe_4,pe_5,pe_6,pe_7,pe_8,pe_9,pe_10)
+
 # delete duplicates
-all_pa_cleaned <- c()
-noduplicates_frame <- c()
 
-## all rows from unique ID
-for (j in unique(all_pa$IND_ID)){
-  ## safe in temporary df
-  noduplicates_frame <- all_pa[which(all_pa$IND_ID==j),]
-  ## order df by date
-  noduplicates_frame <- noduplicates_frame[order(noduplicates_frame$DATE_CREATED),]
-  if (nrow(noduplicates_frame) > 1) {
-    ## every row in df
-    for (rec in (nrow(noduplicates_frame)-1):1) {
-      ## compare with next to follow
-      if (noduplicates_frame$DATE_CREATED [rec] == noduplicates_frame$DATE_CREATED [rec+1]){
-        ## if they have an identical date, delete first row
-        noduplicates_frame <- noduplicates_frame [-rec,]
-      }
-    }
-  }
-  ## merge data frames from single patients into one df again
-  all_pa_cleaned <- bind_rows(all_pa_cleaned, noduplicates_frame)
-}
+# all_pa_cleaned <- c()
+# noduplicates_frame <- c()
+# 
+# ## all rows from unique ID
+# for (j in unique(all_pa$IND_ID)){
+#   ## safe in temporary df
+#   noduplicates_frame <- all_pa[which(all_pa$IND_ID==j),]
+#   ## order df by date
+#   noduplicates_frame <- noduplicates_frame[order(noduplicates_frame$DATE_CREATED),]
+#   if (nrow(noduplicates_frame) > 1) {
+#     ## every row in df
+#     for (rec in (nrow(noduplicates_frame)-1):1) {
+#       ## compare with next to follow
+#       if (noduplicates_frame$DATE_CREATED [rec] == noduplicates_frame$DATE_CREATED [rec+1]){
+#         ## if they have an identical date, delete first row
+#         noduplicates_frame <- noduplicates_frame [-rec,]
+#       }
+#     }
+#   }
+#   ## merge data frames from single patients into one df again
+#   all_pa_cleaned <- bind_rows(all_pa_cleaned, noduplicates_frame)
+# }
+# all_pa <- all_pa_cleaned
 
-all_pa_2 <- all_pa %>% 
+# delete duplicates
+all_pa <- all_pa %>% 
   distinct()
 
-all_pa <- all_pa_cleaned
+# # # recode all true and false (and NA) to numeric
+# all_pa[all_pa == "true"] <- 1
+# all_pa[all_pa == "false"] <- 2
+# all_pa[is.na(all_pa)] <- 0
 
-# recode all true and false (and NA) to numeric
-all_pa[all_pa == "true"] <- 1
-all_pa[all_pa == "false"] <- 2
-all_pa[is.na(all_pa)] <- 0
-
-# replace refill with SCC if ART Refill = yes and SUPPORT SCC = yes (= SCC wished and available)
+# replace refill with SCC if ART Refill = 1 (clinic) and SUPPORT SCC = true (= SCC wished and available)
 table(all_pa$SUPPORT_SCC, useNA = "always")
-all_pa$SUPPORT_SCC <- as.numeric(all_pa$SUPPORT_SCC)
+class(all_pa$SUPPORT_SCC)
+
 table(all_pa$ART_REFILL_1, useNA = "always")
-all_pa$ART_REFILL_1 <- as.numeric(all_pa$ART_REFILL_1)
+class(all_pa$ART_REFILL_1)
+
 all_pa <- all_pa %>%
-  mutate(ART_REFILL_1 = case_when(SUPPORT_SCC == 1 & ART_REFILL_1 == 1 ~ 6,
+  mutate(ART_REFILL_1 = case_when(SUPPORT_SCC == "true" & ART_REFILL_1 == "1" ~ "6",
                                    TRUE ~ c(ART_REFILL_1)))
-
-# Add 12m STATUS
-all_pa <- merge(all_pa, twelve_month[, c("STATUS", "STATUS_DETAIL", "IND_ID")], by = "IND_ID")
-# reclassify the confirmed transfer out as "out of care"
-class(all_pa$STATUS)
-all_pa <- all_pa %>% 
-  mutate(STATUS = case_when(STATUS == "in care" & STATUS_DETAIL == "transfer" ~ "out of care",
-                            TRUE ~ c(STATUS)))
-
-# Add pregnancy/breastfeeding
-all_pa <- merge(all_pa, enrolment[, c("Pregnant", "Breastfeeding", "IND_ID")], by = "IND_ID")
-
-# Add transmission way
-all_pa <- merge(all_pa, enrolment[, c("infection_way", "IND_ID")], by = "IND_ID")
-table(all_pa$infection_way, useNA = "always")
-class(all_pa$infection_way)
-all_pa <- all_pa %>% 
-  mutate(infection_mode = case_when(infection_way == "Through my mother" ~ "vertical",
-                                    infection_way == "Blood products" | infection_way == "Sex with a man" 
-                                    | infection_way == "Sex with a woman" ~ "horizontal",
-                                    TRUE ~ c(infection_way)))
 
 ```
 
 ```{r data management preference data, include=FALSE}
-# Add arm variable and enrollment date
-all_pa <- merge(all_pa, enrolment[, c("ARM", "DATE_ENROL", "IND_ID")], by = "IND_ID")
+# Add enrollment date
+all_pa <- merge(all_pa, enrolment[, c("DATE_ENROL", "IND_ID")], by = "IND_ID")
 
 # Preference assessment per ID
 unique(all_pa$IND_ID)
@@ -173,16 +157,15 @@ mid_pa <- mid_pa %>%
 ```{r work with baseline PA, include=FALSE}
 # rename variables that we don't want to be double
 start_pa <- start_pa %>% 
-  rename(IND_ID = IND_ID_start, GENDER = GENDER_start, 
-         STATUS = STATUS_start, STATUS_DETAIL = STATUS_DETAIL_start)
+  rename(IND_ID = IND_ID_start)
 
 # Unpack Support Option String
 class(start_pa$SUPPORT_start)
 unique(start_pa$SUPPORT_start)
 table(start_pa$SUPPORT_start)
-library(stringr)
-start_pa$SUPPORT_start2 <- strsplit(start_pa$SUPPORT_start, ", ")
-class(start_pa$SUPPORT_start2)
+# library(stringr)
+# start_pa$SUPPORT_start2 <- strsplit(start_pa$SUPPORT_start, ", ")
+# class(start_pa$SUPPORT_start2)
 
 start_pa <- start_pa %>% ## classify nurse support only as No, everyone else chose some pe support
   mutate(pe_support = case_when(grepl("1", SUPPORT_start) == TRUE & 
@@ -208,6 +191,150 @@ table(start_pa$pe_support, useNA = "always")
 
 # what to do with those that chose nurse + those on-the-spot options such as cds demo? -> for now leave them in PE support
 
+```
+
+```{r prepare entire dataset for ITT analysis, message=FALSE, include=FALSE}
+df <- left_join(enrolment, start_pa[, c("pe_support", "IND_ID")], by = join_by(IND_ID == IND_ID))
+table(df$pe_support, useNA = "always")
+
+# Add 12m data
+twelve_month <- twelve_month %>% 
+  rename(CurrentARTregimen_end = CurrentARTregimen,
+         CurrentARTregimen_other_end = CurrentARTregimen_other,
+         CurrentARTregimen_SINCE_WHEN_end = CurrentARTregimen_SINCE_WHEN)
+df <- left_join(df, twelve_month[, c("CurrentARTregimen_end", "CurrentARTregimen_other_end", "CurrentARTregimen_SINCE_WHEN_end",
+                                            "DATE_CREATED_REFILL", "DATE_NEXT", "REFILL_TYPE", "REFILL_NO", "DEATH_DATE", "DEATH_CAUSE",
+                                            "HOSP", "TRANSFER_TO", "TRANSFER_DATE", "ART_STOP", "STATUS", "STATUS_DETAIL", "VL_DATE",
+                                            "FAILED", "VL_LTDL", "VL_RESULT", "IND_ID")], by = join_by(IND_ID == IND_ID))
+# Add baseline VL
+baseline_VL <- baseline_VL %>% 
+  rename(VL_LTDL_baseline = VL_LTDL,
+         VL_RESULT_baseline = VL_RESULT)
+df <- left_join(df, baseline_VL[, c("VL_LTDL_baseline", "VL_RESULT_baseline", "IND_ID")], by = join_by(IND_ID == IND_ID))
+
+# # reclassify the confirmed transfer out as "out of care"
+# class(df$STATUS)
+# df <- df %>% 
+#   mutate(STATUS = case_when(STATUS == "in care" & STATUS_DETAIL == "transfer" ~ "out of care",
+#                             TRUE ~ c(STATUS)))
+
+# Add transmission way
+table(df$infection_way, useNA = "always")
+class(df$infection_way)
+df <- df %>% 
+  mutate(infection_mode = case_when(infection_way == "Through my mother" ~ "vertical",
+                                    infection_way == "Blood products" | infection_way == "Sex with a man" 
+                                    | infection_way == "Sex with a woman" ~ "horizontal",
+                                    TRUE ~ c(infection_way)))
+
+# gender
+table(df$GENDER)
+df$GENDER <- ifelse(as.numeric(df$GENDER) == 1,"female","male")
+
+# cell phone
+table(df$CELL_GIVEN)
+df$CELL_GIVEN <- sapply(df$CELL_GIVEN,FUN = function(a){
+  if (a == 1){return("Yes")}
+  if (a %in% c(2,3)){return("No")}
+})
+
+# age at day of enrolment
+df$AGE <- as.numeric(difftime(df$DATE_ENROL,df$BIRTHDAY,units = "weeks")/52.143)
+
+# sexual orientation
+table(df$SEX_ORIENT)
+df$SEX_ORIENT <- sapply(df$SEX_ORIENT,FUN = function(a){
+  if (a == 1){return("straight or heterosexual")}
+  if (a == 3){return("gay or lesbian")}
+  if (a == 4){return("prefer not to answer")}
+})
+
+# completed years of school
+df$N_school <- with(df,as.numeric(primary)+as.numeric(secondary)+as.numeric(tertiary)+as.numeric(high_school))
+
+# no schooling at all
+df$no_schooling <- ifelse(df$N_school == 0,"Yes","No")
+
+# employment
+df$employment_yn <- ifelse(df$emplyoment %in% c("No regular income / unemployed","Subsistence farming","Housewife"),yes = "unemp",no = "emp")
+
+# occupation
+df$occupation <- mapply(FUN=function(employment,currently_attending){
+  if (employment == "unemp" & currently_attending == "Yes"){return("attending school")}
+  if (employment == "emp"){return("(self-)employed")}
+  if (employment == "unemp" & currently_attending == "No"){return("nothing")}
+},df$employment_yn,df$currently_attending)
+
+# profession
+table(df$profession)
+tab <- table(df$profession)<3
+df$profession <- ifelse(df$profession %in% c(names(tab[tab]),"Other"),"Other",df$profession)
+
+# pregnant or breastfeeding
+df$pregnant_breastfeeding <- sapply(xor(df$Pregnant == "Yes",df$Breastfeeding == "Yes"),FUN = function(a){
+  if (is.na(a)){return(NA)}
+  else if (a == TRUE){return("Yes")}
+  else if (a == FALSE){return("No")}
+})
+df$pregnant_breastfeeding[df$GENDER=="male"]<-NA
+df$pregnant_breastfeeding[df$GENDER=="female" & is.na(df$pregnant_breastfeeding)]<- "No"
+table(df$pregnant_breastfeeding, df$GENDER, useNA = "always")
+
+# contraceptive use
+# sterilized : 0
+table(df$fp_other)
+df$fp_inject[which(df$fp_other==1)]<-1
+df$fp_other[which(df$fp_other==1)]<-0
+df$fp_calendar <- ifelse(as.numeric(df$fp_calendar)==1,"Yes","No")
+df$fp_condom <- ifelse(as.numeric(df$fp_condom) ==1,"Yes","No")
+df$fp_pill <- ifelse(as.numeric(df$fp_pill) ==1,"Yes","No")
+df$fp_withdraw <- ifelse(as.numeric(df$fp_withdraw)==1,"Yes","No")
+df$fp_inject <- ifelse(as.numeric(df$fp_inject)==1,"Yes","No")
+df$fp_other <- ifelse(as.numeric(df$fp_other)==1,"Yes","No")
+df$fp_no_answer <- ifelse(as.numeric(df$fp_no_answer)==1,"Yes","No")
+
+# how many children (add 0 if NA)
+df$Howmany[is.na(df$Howmany)] <- 0
+
+# number of correctly answered HIV knowledge questions
+df$N_HIV_question <- with(df,mapply(FUN = sum,kissing == "No",kitchen == "No",touching == "No",men_to_women == "Yes",women_to_men == "Yes",partners == "No",washing == "No",pregnant_to_baby == "Yes",virgin == "No",cure == "No"))
+
+# expenses
+df$expenses_transport_yn <- sapply(df$expenses_transport, FUN = function(a){
+  if(a == "1"){return("yes")}
+  else {return("no")}
+    })
+df$expenses_transport_cost <- as.numeric(df$expenses_transport_cost)
+df$expenses_food_yn <- sapply(df$expenses_food, FUN = function(a){
+  if(a == "1"){return("yes")}
+  else {return("no")}
+    })
+df$expenses_food_cost <- as.numeric(df$expenses_food_cost)
+
+# marital status
+table(df$Maritalstatus)
+df$Maritalstatus <- ifelse(df$Maritalstatus %in% c("divorced","separated","widowed"),"div/sep/wid",df$Maritalstatus)
 
 ```
+
+# Baseline characteristics by group: socio-demographics
+
+```{r sociodemographic table, echo=TRUE}
+# table for sociodemographic characteristics
+vars.list <- c("ARM","GENDER","AGE","CELL_GIVEN","SEX_ORIENT","currently_attending","no_schooling","N_school","emplyoment","occupation","profession","Maritalstatus","pregnant_breastfeeding","Howmany","using_fp","fp_condom","fp_pill","fp_inject","fp_withdraw","fp_calendar","fp_other","fp_no_answer","N_HIV_question","expenses_transport_yn","expenses_transport_cost","expenses_food_yn","expenses_food_cost")
+
+df_sociodemo <- df[,colnames(df)%in%vars.list]
+df_sociodemo <- df_sociodemo[,match(vars.list,colnames(df_sociodemo))]
+colnames(df_sociodemo) <- vars.list <- c("ARM","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation","Currently attending school","No schooling","Number of completed school years","Employment","Occupation","Profession (if (self-)employed)","Marital status","Pregnant  or breastfeeding","Number of children","Contraception use","Contraception: Condom use (male and female)","Contraception: Contraceptive pill","Contraception: Injectable or Implant (e.g. DEPO)","Contraception: Withdraw","Contraception: Calendar method","Contraception: other","Contraception: no answer","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: transport costs","Expenses: food","Expenses: food costs")
+
+table_sociodemo <- tableone::CreateTableOne(data = df_sociodemo,vars = vars.list[!vars.list == "ARM"],strata = "ARM",includeNA = TRUE,test = FALSE,addOverall = TRUE)
+
+capture.output(table_sociodemo <- print(table_sociodemo, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = TRUE))
+
+#print
+knitr::kable(table_sociodemo,caption = "Baseline characteristics: socio-demographic, missing values in categorical variables: NAs")
+
+```
+
+# Baseline characteristics by group: clinical
 
