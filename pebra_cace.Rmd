@@ -338,3 +338,9 @@ knitr::kable(table_sociodemo,caption = "Baseline characteristics: socio-demograp
 
 # Baseline characteristics by group: clinical
 
+```{r}
+df_sociodemo <- df[,colnames(df)%in%vars.list]
+
+
+```
+
