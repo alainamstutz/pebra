@@ -130,3 +130,74 @@ Table: Baseline characteristics: socio-demographic, missing values in categorica
 
 # Baseline characteristics by group: clinical
 
+
+
+
+```r
+# table for clinical characteristics
+vars.list <- c("diagnosis_year_cat","time_diag_enrol","artstart_year_cat",
+                   "time_artstart_enrol","infection_year_cat","time_infection_enrol",
+                   "CurrentARTregimen","Currently_TBx","cd4_start_cat",
+                   "baseline_Vl_cat","infection_way","ARM")
+
+df_clinical <- df[,colnames(df)%in%vars.list]
+df_clinical <- df_clinical[,match(vars.list,colnames(df_clinical))]
+
+colnames(df_clinical) <- vars.list <- c("Year of HIV diagnosis","Years since HIV diagnosis","Year of starting ART","Years since starting ART","Year of HIV infection","Years since HIV infection","Current ART regimen","Currently on TB treatment","CD4 count at ART start", "Baseline viral load","How do you believe you were infected with HIV?","ARM")
+
+table_clinical <- tableone::CreateTableOne(data = df_clinical,vars = vars.list[!vars.list == "ARM"],strata = "ARM",includeNA = TRUE,test = FALSE,addOverall = TRUE)
+
+capture.output(table_clinical <- print(table_clinical, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = TRUE))
+```
+
+```
+## character(0)
+```
+
+```r
+#print
+knitr::kable(table_clinical,caption = "Baseline characteristics: clinical, missing values in categorical variables: NAs")
+```
+
+
+
+Table: Baseline characteristics: clinical, missing values in categorical variables: NAs
+
+|                                                   |level                  |Overall            |control            |interv.            |Missing |
+|:--------------------------------------------------|:----------------------|:------------------|:------------------|:------------------|:-------|
+|n                                                  |                       |307                |157                |150                |        |
+|Year of HIV diagnosis (%)                          |2005-2009              |74 (24.1)          |29 (18.5)          |45 (30.0)          |0.0     |
+|                                                   |2010-2014              |69 (22.5)          |30 (19.1)          |39 (26.0)          |        |
+|                                                   |2015-2020              |164 (53.4)         |98 (62.4)          |66 (44.0)          |        |
+|Years since HIV diagnosis (median [IQR])           |                       |4.52 [1.86, 9.74]  |3.63 [1.52, 7.87]  |5.45 [2.91, 10.99] |0.0     |
+|Year of starting ART (%)                           |2005-2009              |56 (18.2)          |21 (13.4)          |35 (23.3)          |0.0     |
+|                                                   |2010-2014              |66 (21.5)          |27 (17.2)          |39 (26.0)          |        |
+|                                                   |2015-2020              |185 (60.3)         |109 (69.4)         |76 (50.7)          |        |
+|Years since starting ART (median [IQR])            |                       |3.65 [1.65, 8.39]  |3.14 [1.21, 5.82]  |4.90 [2.67, 9.35]  |0.0     |
+|Year of HIV infection (%)                          |1995-1999              |10 ( 3.3)          |6 ( 3.8)           |4 ( 2.7)           |0.0     |
+|                                                   |2000-2004              |49 (16.0)          |26 (16.6)          |23 (15.3)          |        |
+|                                                   |2005-2009              |57 (18.6)          |18 (11.5)          |39 (26.0)          |        |
+|                                                   |2010-2014              |48 (15.6)          |19 (12.1)          |29 (19.3)          |        |
+|                                                   |2015-2020              |143 (46.6)         |88 (56.1)          |55 (36.7)          |        |
+|Years since HIV infection (median [IQR])           |                       |5.93 [2.92, 12.90] |4.93 [2.89, 12.87] |8.43 [3.88, 12.93] |0.0     |
+|Current ART regimen (%)                            |DTG-based              |40 (13.0)          |26 (16.6)          |14 ( 9.3)          |0.0     |
+|                                                   |EFV-based              |212 (69.1)         |104 (66.2)         |108 (72.0)         |        |
+|                                                   |LPV/r-based            |8 ( 2.6)           |5 ( 3.2)           |3 ( 2.0)           |        |
+|                                                   |NVP-based              |47 (15.3)          |22 (14.0)          |25 (16.7)          |        |
+|Currently on TB treatment (%)                      |No                     |299 (97.4)         |151 (96.2)         |148 (98.7)         |0.0     |
+|                                                   |Yes                    |8 ( 2.6)           |6 ( 3.8)           |2 ( 1.3)           |        |
+|CD4 count at ART start (%)                         |<200                   |36 (11.7)          |13 ( 8.3)          |23 (15.3)          |58.3    |
+|                                                   |200-499                |53 (17.3)          |32 (20.4)          |21 (14.0)          |        |
+|                                                   |>499                   |39 (12.7)          |24 (15.3)          |15 (10.0)          |        |
+|                                                   |NA                     |179 (58.3)         |88 (56.1)          |91 (60.7)          |        |
+|Baseline viral load (%)                            |<20                    |166 (54.1)         |84 (53.5)          |82 (54.7)          |11.1    |
+|                                                   |20-999                 |63 (20.5)          |30 (19.1)          |33 (22.0)          |        |
+|                                                   |>999                   |44 (14.3)          |26 (16.6)          |18 (12.0)          |        |
+|                                                   |NA                     |34 (11.1)          |17 (10.8)          |17 (11.3)          |        |
+|How do you believe you were infected with HIV? (%) |Blood products         |17 ( 5.5)          |11 ( 7.0)          |6 ( 4.0)           |0.0     |
+|                                                   |I don't know           |103 (33.6)         |50 (31.8)          |53 (35.3)          |        |
+|                                                   |I prefer not to answer |6 ( 2.0)           |5 ( 3.2)           |1 ( 0.7)           |        |
+|                                                   |Other                  |7 ( 2.3)           |7 ( 4.5)           |0 ( 0.0)           |        |
+|                                                   |Sex with a man         |63 (20.5)          |36 (22.9)          |27 (18.0)          |        |
+|                                                   |Sex with a woman       |4 ( 1.3)           |2 ( 1.3)           |2 ( 1.3)           |        |
+|                                                   |Through my mother      |107 (34.9)         |46 (29.3)          |61 (40.7)          |        |
