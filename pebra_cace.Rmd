@@ -14,6 +14,8 @@ output:
     toc: yes
 ---
 
+# Load packages
+
 ```{r load packages, include=FALSE}
 library(tidyverse)
 library(readxl)
@@ -22,12 +24,15 @@ library(data.table)
 library(writexl)
 library(lme4)
 library(msm)
+library(sjPlot) # for tab_model
 
 ```
 
-```{r load data, include=FALSE}
+# Load Data
+```{r, include=FALSE}
 enrolment <- read_excel("data/0m_enrolment.xls")
 twelve_month <- read_excel("data/12m_status_VL_ART_20210505.xls")
+status_6 <- read_excel("data/6m_status.xls") 
 baseline_VL <- read_excel("data/0m_VL_2xlsx.xls")
 # all intervention peer educators
 pe_1 <- read_excel("data/cheezy_pa.xls")
@@ -43,7 +48,77 @@ pe_10 <- read_excel("data/tlikso_pa.xls")
 
 ```
 
-```{r data management characteristics PAs, include=FALSE}
+# Load functions
+
+```{r functions, include=FALSE}
+# functions used for PEBRA main analyses for main results publication
+
+percentage_table <- function(variable1,variable2){
+  df <- table(variable1,variable2,useNA = "ifany")
+  df_per_1 <- paste0(paste0("(",paste0(round(df[,1]/sum(df[,1])*100,2),"%")),")")
+  df_per_2 <- paste0(paste0("(",paste0(round(df[,2]/sum(df[,2])*100,2),"%")),")")
+  df_per_1 <- paste(df[,1],df_per_1)
+  df_per_2 <- paste(df[,2],df_per_2)
+  df_per <- cbind(df_per_1,df_per_2)
+  colnames(df_per) <- colnames(df)
+  rownames(df_per) <- rownames(df)
+  rownames(df_per)[is.na(rownames(df_per))]<-"missing"
+  return(df_per)
+}
+
+percentage_table_incl_total <- function(variable1,variable2){
+  df <- table(variable1,variable2,useNA = "ifany")
+  df <- cbind(df,table(variable1,useNA = "ifany"))
+  colnames(df)[3]<-"total"
+  df_per_1 <- paste0(paste0("(",paste0(round(df[,1]/sum(df[,1])*100,2),"%")),")")
+  df_per_2 <- paste0(paste0("(",paste0(round(df[,2]/sum(df[,2])*100,2),"%")),")")
+  df_per_3 <- paste0(paste0("(",paste0(round(df[,3]/sum(df[,3])*100,2),"%")),")")
+  df_per_1 <- paste(df[,1],df_per_1)
+  df_per_2 <- paste(df[,2],df_per_2)
+  df_per_3 <- paste(df[,3],df_per_3)
+  df_per <- cbind(df_per_1,df_per_2,df_per_3)
+  colnames(df_per) <- colnames(df)
+  rownames(df_per) <- rownames(df)
+  rownames(df_per)[is.na(rownames(df_per))]<-"missing"
+  return(df_per)
+}
+percentage_table_woutNA <- function(variable1,variable2){
+  df <- table(variable1,variable2)
+  df_per_1 <- paste0(paste0("(",paste0(round(df[,1]/sum(df[,1])*100,2),"%")),")")
+  df_per_2 <- paste0(paste0("(",paste0(round(df[,2]/sum(df[,2])*100,2),"%")),")")
+  df_per_1 <- paste(df[,1],df_per_1)
+  df_per_2 <- paste(df[,2],df_per_2)
+  df_per <- cbind(df_per_1,df_per_2)
+  colnames(df_per) <- colnames(df)
+  rownames(df_per) <- rownames(df)
+  return(df_per)
+}
+
+# delta method to get confidence intervals
+# https://migariane.github.io/DeltaMethodEpiTutorial.nb.html
+get_confint_delta <- function(fit){
+  se_or_delta <- mapply(FUN = function(b1,vb1){deltamethod(~ exp(x1), b1, vb1)},
+                        fixef(fit), diag(vcov.merMod(fit)))
+  grad <- exp(fixef(fit))
+  return(data.frame(CI_l = grad-1.96*se_or_delta,CI_u = grad+1.96*se_or_delta))
+}
+
+#get confint pasted
+paste_confint <- function(confint){
+  paste0(paste0(paste0(paste0("(",round(confint[1,],2))," to "),round(confint[2,],2)),")")
+}
+
+binary_satisfaction <- function(a){
+  if (is.na(a)){return(NA)}
+  else if (a %in% c("Very satisfied")){return(1)}
+  else {return(0)}}
+
+```
+
+# Data management
+### Preference assessments (intervention peer-educator data only)
+
+```{r, include=FALSE}
 # merge pa's from different intervention clinics
 all_pa <- bind_rows(pe_1,pe_2,pe_3,pe_4,pe_4,pe_5,pe_6,pe_7,pe_8,pe_9,pe_10)
 
@@ -95,7 +170,7 @@ all_pa <- all_pa %>%
 
 ```
 
-```{r data management preference data, include=FALSE}
+```{r, include=FALSE}
 # Add enrollment date
 all_pa <- merge(all_pa, enrolment[, c("DATE_ENROL", "IND_ID")], by = "IND_ID")
 
@@ -154,6 +229,8 @@ mid_pa <- mid_pa %>%
 
 ```
 
+### Baseline preference assessment data only
+
 ```{r work with baseline PA, include=FALSE}
 # rename variables that we don't want to be double
 start_pa <- start_pa %>% 
@@ -193,7 +270,10 @@ table(start_pa$pe_support, useNA = "always")
 
 ```
 
-```{r prepare entire dataset for ITT analysis, message=FALSE, include=FALSE}
+### Join to main dataset with all peer-educators and participants
+### Sociodemographic characteristics of all participants
+
+```{r, message=FALSE, include=FALSE}
 # Add preference assessment data of baseline
 df <- left_join(enrolment, start_pa[, c("pe_support", "IND_ID")], by = join_by(IND_ID == IND_ID))
 table(df$pe_support, useNA = "always")
@@ -309,9 +389,9 @@ df$Maritalstatus <- ifelse(df$Maritalstatus %in% c("divorced","separated","widow
 
 ```
 
-# Baseline characteristics by group: socio-demographics
+### TABLE Baseline characteristics by group: socio-demographics
 
-```{r sociodemographic table, echo=TRUE}
+```{r, echo=TRUE}
 # table for sociodemographic characteristics
 vars.list <- c("ARM","GENDER","AGE","CELL_GIVEN","SEX_ORIENT","currently_attending","no_schooling","N_school","emplyoment","occupation","profession","Maritalstatus","pregnant_breastfeeding","Howmany","using_fp","fp_condom","fp_pill","fp_inject","fp_withdraw","fp_calendar","fp_other","fp_no_answer","N_HIV_question","expenses_transport_yn","expenses_transport_cost","expenses_food_yn","expenses_food_cost")
 
@@ -328,7 +408,7 @@ knitr::kable(table_sociodemo,caption = "Baseline characteristics: socio-demograp
 
 ```
 
-# Baseline characteristics by group: clinical
+### Clinical characteristics of all participants
 
 ```{r include=FALSE}
 # year of HIV diagnosis
@@ -430,7 +510,9 @@ table(df$infection_way_other, useNA = "always")
 
 ```
 
-```{r clinical table, echo=TRUE}
+### TABLE Clinical characteristics by group: socio-demographics
+
+```{r, echo=TRUE}
 # table for clinical characteristics
 vars.list <- c("diagnosis_year_cat","time_diag_enrol","artstart_year_cat",
                    "time_artstart_enrol","infection_year_cat","time_infection_enrol",
@@ -473,9 +555,8 @@ II. Participants who died (all-cause), were lost to follow-up (LTFU), or were al
 
 iv. The study will use VL results from routine VL monitoring. To synchronize routine VL monitoring and study VL monitoring, study staff will help ensure each site has the capacity to collect these samples and will support existing systems that help to provide results back to sites. VLs will only be performed on individuals who return for visits and no tracking besides standard of care will be performed by the study staff to obtain VLs.
 
-```{r,echo = FALSE,results='markup'}
+```{r,echo = TRUE,results='markup'}
 # endpoint definition
-class(df$VL_DATE)
 df$VL_DATE <- as.Date(df$VL_DATE)
 df$VL_RESULT <- as.numeric(df$VL_RESULT)
 
@@ -493,16 +574,23 @@ fun_endpoint <- function(VL,VL_date,endpoint_l,endpoint_u,status){
 
 df$endpoint_reached <- with(df,mapply(fun_endpoint,
   VL_RESULT,VL_DATE,endpoint_l,endpoint_u,STATUS))
-table(df$endpoint_reached, useNA = "always")
+
+# table(df$endpoint_reached, useNA = "always")
+tab <- table(df$endpoint_reached)
+rownames(tab) <- c(">=20","<20")
+
+# print
+knitr::kable(tab,caption = "reached primary endpoint")
 
 ```
 
-### Endpoint overview
+### VL endpoint overview
 
-```{r,echo = FALSE,results='markup'}
+```{r,echo = TRUE,results='markup'}
 tab <- percentage_table(df$endpoint_reached,df$ARM)
-knitr::kable(tab,caption = "reached primary endpoint")
-
+rownames(tab) <- c(">=20","<20")
+# print
+knitr::kable(tab,caption = "reached primary endpoint, by arm")
 
 fun_endpoint_detail <- function(VL,VL_date,endpoint_l,endpoint_u,status){
   if (status == "out of care"){return("out of care")}
@@ -518,12 +606,137 @@ df$endpoint_detail <- with(df,mapply(fun_endpoint_detail,
 tab <- percentage_table(df$endpoint_detail,df$ARM)
 tab <- tab[c(2,1,3,5,4,6),]
 
-knitr::kable(tab,caption = "primary endpoint detail")
+# print
+knitr::kable(tab,caption = "primary endpoint detail, by arm")
 
 out_of_window <- df[df$endpoint_detail == "VL out of window",]
 tab <- percentage_table(out_of_window$VL_RESULT<20,out_of_window$ARM)
 rownames(tab) <- c(">=20","<20")
-knitr::kable(tab,caption = "VLs of those out of window")
 
+# print
+knitr::kable(tab,caption = "VLs of those out of window, by arm")
+
+```
+
+# Primary ITT analysis
+
+For the analysis of the primary outcome, we will use a multi-level logistic regression model including clinic as a random effect, arm allocation and the randomisation stratification factor (district) as a fixed effect. **Gender was included in the analysis as a relevant baseline factors found to be randomly unbalanced between intervention and control arm**. Unavailability of a viral load or invalid VL result in the predefined primary endpoint window (for any reason) will be considered as failures. Results will be reported as odds ratios with 95% confidence intervals **and p-values**.
+
+```{r, echo = TRUE, message = FALSE}
+
+# use logit link to obtain ORs
+fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER), 
+              data = df, 
+              family = binomial(link = "logit"))
+# class(fit)
+primary <- df %>% 
+  glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER), 
+              family = binomial(link = "logit"), data=.)
+tab_model(primary)
+
+primary <- df %>% 
+  glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER), 
+              family = binomial(link = "logit"), data=.) %>% 
+  confint.merMod(method="Wald") %>% 
+  exp()
+# class(primary)
+
+# exp(fixef(fit))
+# summary(fit)$coefficients
+
+#confidence intervals
+confint <- exp(confint.merMod(fit,method="Wald"))
+confint <- t(confint[!rownames(confint)%in%c("(Intercept)",".sig01"),])
+
+data <- data.frame(
+  "odds ratio" = round(exp(fixef(fit)[names(fixef(fit))!="(Intercept)"]),2),
+  "confidence interval" = paste_confint(confint),
+  "p-value" = round(summary(fit)$coefficients[,4][names(summary(fit)$coefficients[,4])!="(Intercept)"],3))
+
+# ordering A on top
+data <- data[order(rownames(data)),]           
+
+knitr::kable(data,caption = "individual-level analysis adjusted for district and gender")
+```
+
+
+# Sensitivity analysis on ITT set
+
+### Wider Endpoint window
+
+We use a wider window for the primary endpoint, namely 9-18 months.
+
+```{r,echo = FALSE,message=FALSE}
+# endpoint window
+df$endpoint_l <- as.Date(df$DATE_ENROL) + 252
+df$endpoint_u_alternative <- as.Date(df$DATE_ENROL) + (30*18)
+
+# defintion endpoint alternative
+fun_endpoint_alternative <- function(VL,VL_date,endpoint_l,endpoint_u_alternative,status){
+  if (is.na(VL)){return(0)}
+  else if (VL >= 20){return(0)}
+  else if (status == "out of care"){return(0)}
+  else if (xor(VL_date < endpoint_l,VL_date > endpoint_u_alternative)){return(0)}
+  else {return(1)}}
+
+df$endpoint_reached_alt <- with(df,mapply(fun_endpoint_alternative,
+  VL_RESULT,VL_DATE,endpoint_l,endpoint_u_alternative,STATUS))
+
+tab <- percentage_table(df$endpoint_reached_alt,df$ARM)
+# print
+knitr::kable(tab,caption = "primary endpoint reached with wider endpoint window, by arm")
+
+# use logit link to obtain ORs
+fit <- glmer(endpoint_reached_alt ~ DISTRICT + ARM + GENDER + (1|USER), 
+              data = df, 
+              family = binomial(link = "logit"))
+tab_model(fit)
+
+#confidence intervals
+confint <- exp(confint.merMod(fit,method="Wald"))
+confint <- t(confint[!rownames(confint)%in%c("(Intercept)",".sig01"),])
+
+data <- data.frame("odds ratio" = round(exp(fixef(fit)[names(fixef(fit))!="(Intercept)"]),2),
+           "confidence interval" = paste_confint(confint),
+           "p-value" = round(summary(fit)$coefficients[,4][names(summary(fit)$coefficients[,4])!="(Intercept)"],3))
+
+# order by A
+data <- data [order(rownames(data)),]           
+
+# print
+knitr::kable(data,caption = "primary endpoint with 9-18 window: individual-level analysis adjusted for district and gender")
+```
+
+
+# Per-protocol analysis (according to protocol/publication)
+
+We analyse the individual-based per protocol set, considering participants who have 1. a documented 6 month visit (range: 5 -- 8 months); and **(this was the only difference compared to primary analysis)** 2. a documented 12 months visit with viral load measurement (range: 9 -- 15 months).
+
+```{r,echo = TRUE,message=FALSE}
+df$status_6 <- status_6$STATUS[match(df$STICKER_ID,status_6$STICKER_ID)]
+df$REFILL_NO_6 <- status_6$REFILL_NO[match(df$STICKER_ID,status_6$STICKER_ID)]
+df$endpoint_reached_pp <- df$endpoint_reached 
+df$endpoint_reached_pp[df$status_6 == "out of care"] <- 0
+
+tab <- percentage_table(df$endpoint_reached_pp,df$ARM)
+# print
+knitr::kable(tab,caption = "reached primary endpoint per protocol, by arm")
+
+fit <- glmer(endpoint_reached_pp ~ DISTRICT + ARM + GENDER + (1|USER), 
+              data = df, 
+              family = binomial(link = "logit"))
+tab_model(fit)
+
+confint <- exp(confint.merMod(fit,method="Wald"))
+confint <- t(confint[!rownames(confint)%in%c("(Intercept)",".sig01"),])
+data <- data.frame("odds ratio" = round(exp(fixef(fit)[names(fixef(fit))!="(Intercept)"]),2),
+           "confidence interval" = paste_confint(confint),
+           "p-value" = round(summary(fit)$coefficients[,4][names(summary(fit)$coefficients[,4])!="(Intercept)"],3))
+
+# order by A
+data <- data [order(rownames(data)),]           
+      
+# print
+knitr::kable(data,caption = "per-protocol individual-level analysis adjusted for district and gender")
 ```
 
