@@ -714,16 +714,19 @@ table(df$pe_support, useNA = "always") # 11 wanted ONLY nurse-support, i.e., did
 
 ```r
 df <- df %>% 
+  mutate(endpoint_reached_f = case_when(endpoint_reached == 1 ~ "Below 20 c/mL",
+                                endpoint_reached == 0 ~ "Above 20 c/mL or missing"))
+df <- df %>% 
   mutate(pe_support = case_when(pe_support == "Yes" ~ "Accepted PEBRA",
                                 pe_support == "No" ~ "Refused PEBRA"))
 
 # table for sociodemographic characteristics
-vars.list <- c("ARM","pe_support","GENDER","AGE","CELL_GIVEN","SEX_ORIENT","currently_attending","no_schooling","N_school","emplyoment","occupation","profession","Maritalstatus","pregnant_breastfeeding","Howmany","using_fp","N_HIV_question","expenses_transport_yn","expenses_transport_cost","expenses_food_yn","expenses_food_cost","diagnosis_year_cat","time_diag_enrol","artstart_year_cat","time_artstart_enrol","infection_year_cat","time_infection_enrol","CurrentARTregimen","Currently_TBx","cd4_start_cat","baseline_Vl_cat","infection_mode")
+vars.list <- c("ARM","pe_support","GENDER","AGE","CELL_GIVEN","SEX_ORIENT","currently_attending","no_schooling","N_school","emplyoment","occupation","profession","Maritalstatus","pregnant_breastfeeding","Howmany","using_fp","N_HIV_question","expenses_transport_yn","expenses_transport_cost","expenses_food_yn","expenses_food_cost","diagnosis_year_cat","time_diag_enrol","artstart_year_cat","time_artstart_enrol","infection_year_cat","time_infection_enrol","CurrentARTregimen","Currently_TBx","cd4_start_cat","baseline_Vl_cat","infection_mode","endpoint_reached_f")
 
 df_cace <- df[,colnames(df)%in%vars.list]
 df_cace <- df_cace[,match(vars.list,colnames(df_cace))]
 
-colnames(df_cace) <- vars.list <- c("ARM","complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation","Currently attending school","No schooling","Number of completed school years","Employment","Occupation","Profession (if (self-)employed)","Marital status","Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: transport costs","Expenses: food","Expenses: food costs","Year of HIV diagnosis","Years since HIV diagnosis","Year of starting ART","Years since starting ART","Year of HIV infection","Years since HIV infection","Current ART regimen","Currently on TB treatment","CD4 count at ART start","Baseline viral load","How do you believe you were infected with HIV?")
+colnames(df_cace) <- vars.list <- c("ARM","complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation","Currently attending school","No schooling","Number of completed school years","Employment","Occupation","Profession (if (self-)employed)","Marital status","Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: transport costs","Expenses: food","Expenses: food costs","Year of HIV diagnosis","Years since HIV diagnosis","Year of starting ART","Years since starting ART","Year of HIV infection","Years since HIV infection","Current ART regimen","Currently on TB treatment","CD4 count at ART start","Baseline viral load","How do you believe you were infected with HIV?","Primary endpoint reached as per primary analysis")
 
 # in intervention arm only
 df_cace_int <- df_cace %>%
@@ -828,6 +831,8 @@ Table: Baseline characteristics of intervention participants, by compliance to P
 |                                                                                 |I don't know                      |53 (35.3)            |50 (36.0)            |3 ( 27.3)            |      |        |        |
 |                                                                                 |I prefer not to answer            |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |      |        |        |
 |                                                                                 |vertical                          |61 (40.7)            |57 (41.0)            |4 ( 36.4)            |      |        |        |
+|Primary endpoint reached as per primary analysis (%)                             |Above 20 c/mL or missing          |51 (34.0)            |47 (33.8)            |4 ( 36.4)            |1.000 |        |0.0     |
+|                                                                                 |Below 20 c/mL                     |99 (66.0)            |92 (66.2)            |7 ( 63.6)            |      |        |        |
 
 ```r
 # add the overall table
@@ -942,8 +947,30 @@ Table: Baseline characteristics by randomization group and of participants that 
 |                                                                                 |I don't know                      |50 (31.8)            |53 (35.3)            |I don't know                      |50 (36.0)            |3 ( 27.3)            |
 |                                                                                 |I prefer not to answer            |5 ( 3.2)             |1 ( 0.7)             |I prefer not to answer            |1 ( 0.7)             |0 (  0.0)            |
 |                                                                                 |vertical                          |46 (29.3)            |61 (40.7)            |vertical                          |57 (41.0)            |4 ( 36.4)            |
+|Primary endpoint reached as per primary analysis (%)                             |Above 20 c/mL or missing          |62 (39.5)            |51 (34.0)            |Above 20 c/mL or missing          |47 (33.8)            |4 ( 36.4)            |
+|                                                                                 |Below 20 c/mL                     |95 (60.5)            |99 (66.0)            |Below 20 c/mL                     |92 (66.2)            |7 ( 63.6)            |
+
+```r
+# investigate further, see M. Hernan Colo Supp, esp. re predictors for compliance / add OR + 95% to table
+```
+The table shows that some baseline characteristics were different between the accepters and refusers (transmission mode, baseline VL, baseline regimen, Years since HIV infection, Years since starting ART, etc.) - to be explored more with a risk factor analysis. Valid estimation of the traditional per protocol effect would require adjustment for these and any other prognostic factors that predict compliance. As a result, the per protocol effect cannot be generally estimated via a traditional per protocol analysis that directly compares the outcomes of the adherents and the controls. The conducted per protocol analysis above (according to protocol/publication) was different, but did estimate something that did not really answer a valid question.
+
+## Now, we conduct the first CACE analysis, using IV.
+
+IV analyses are based on several assumptions:
+1. The instrumental variable (randomization) is associated with the treatment -> true by design
+2. There are no unmeasured common causes between randomization and the outcome -> true by design
+3. The effect of the randomization on the outcome is fully mediated through the intervention ("exclusion restrictions") -> we cannot fully rule out that intervention refusers were not influenced by the offer of the intervention. Therefore, we will perform the PS analysis as a sensitivity analysis.
+4. Monotonicity (i.e. no “defiers”) -> true by design (consent was different by group; groups were blinded to allocation; only participants randomized to the PEBRA model could have received the PEBRA model. No one was prevented from accessing the PEBRA model because they were randomized to the PEBRA model)
+5. Stable unit treatment value assumption: one participants’s randomization to the PEBRA model does not affect another participants’s outcome -> true by design (participants were unaware of their randomization status. Randomization was only linked to the offer of the PEBRA model).
+
+Estimation of the CACE is most often done using a “two-stage least squares” (TSLS) approach (Stuart, 2008; 10.1007/s11121-008-0104-y), which jointly models the two processes of compliance and outcome (Angrist and Imbens, 1995). TSLS involves two models: a regression model of compliance, and a regression model predicting the outcome, given compliance These models are estimated jointly, to calculate accurate standard errors that account for the uncertainty in the “first-stage” (compliance) model. Using TSLS also allows the inclusion of covariates that predict participation and/or the outcome, which can increase the precision of the estimates.
+
+Accordingly, the primary outcome was analysed using a TSLS model with randomization as the in- strumental variable and "accepting the PEBRA model" as the treatment variable. In the first stage, the relation between treatment assignment and treatment acceptance (compliance) was estimated.
+In the second stage, the effect of the PEBRA model on the outcome was estimated, using the predicted values from the first stage as an independent variable in a logistic regression model.
 
 
 
+## Now, conduct the second CACE analysis (sensitivity analysis), using PS (check UMBRELLA/Zelen_SSc).
 
-Therefore, we also performed instrumental variable IV analysis using the two-stage least squares method to account for possible non-acceptance in the intervention group as a sensitivity analysis [29, 31]. In the first stage, the relation between treatment assignment and treatment acceptance (compliance) was estimated [32]. In the second stage, the effect of the exercise program on the outcome was estimated, using the predicted values from the first stage as an independ- ent variable in a linear regression model. 
+## Re-consider primary endpoint definition re missing outcomes. And consider MICE for missing covariates (check SPIN/UMBRELLA)
