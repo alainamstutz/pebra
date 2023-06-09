@@ -260,13 +260,14 @@ start_pa <- start_pa %>% ## classify nurse support only as No, everyone else cho
                                   grepl("13", SUPPORT_start) == FALSE &
                                   grepl("14", SUPPORT_start) == FALSE ~ "No",
                              TRUE ~ "Yes"))
-start_pa %>% ## reclassify the one who wanted no support at all as "nurse support only" / "no PE support"
+start_pa %>% ## reclassify the one who ONLY wanted no support at all as "nurse support only" / "no PE support"
   mutate(pe_support = case_when(grepl("14", SUPPORT_start) == TRUE ~ "No",
                              TRUE ~ c(pe_support)))
 
-table(start_pa$pe_support, useNA = "always")
+## there was no-one who ONLY wanted 8= Condom demonstration; or 9= More information about contraceptives; or 10= More information about VMMC; or 11= For pregnant: Linkage to young mothers group (DREAMS or Mothers-to-Mothers); or 12= For females: Linkage to a female WORTH group (Social Asset Building Model); or 13= More information about legal aid and gender-based violence
 
-# what to do with those that chose nurse + those on-the-spot options such as cds demo? -> for now leave them in PE support
+table(start_pa$SUPPORT_start, useNA = "always")
+table(start_pa$pe_support, useNA = "always")
 
 ```
 
@@ -367,6 +368,12 @@ df$fp_no_answer <- ifelse(as.numeric(df$fp_no_answer)==1,"Yes","No")
 
 # how many children (add 0 if NA)
 df$Howmany[is.na(df$Howmany)] <- 0
+unique(df$Howmany)
+class(df$Howmany)
+table(df$Howmany, useNA = "always")
+df <- df %>% 
+  mutate(Howmany = case_when(Howmany == "2" | Howmany == "3" ~ "2 or 3",
+                             TRUE ~ Howmany))
 
 # number of correctly answered HIV knowledge questions
 df$N_HIV_question <- with(df,mapply(FUN = sum,kissing == "No",kitchen == "No",touching == "No",men_to_women == "Yes",women_to_men == "Yes",partners == "No",washing == "No",pregnant_to_baby == "Yes",virgin == "No",cure == "No"))
@@ -740,3 +747,57 @@ data <- data [order(rownames(data)),]
 knitr::kable(data,caption = "per-protocol individual-level analysis adjusted for district and gender")
 ```
 
+# Complier Average Causal Effect (CACE) analysis (i.e., optimized per-protocol analysis)
+
+The ITT analysis estimates a "policy-level" estimate, meaning the effect if PEBRA model is being implemented at a health facility, irrespective of uptake and adherence to the care model by individual participants.
+The per-protocol analysis according to protocol/publication excludes participants with missing VL measurements at 6 and 12 months. This is based on a strong assumption that participants with missing VL measurements are not different to those participants with available VL measurements with respect to all predictors of outcome since it compromises randomization. Moreover, it is still a "policy-level" estimate; it does not tell a patient or a clinician what the effect of the PEBRA model is if a patient adheres to the model as intended. Besides, the non-uptake in the intervention dilutes both these trial estimates.
+A better option is to conduct a *Complier Average Causal Effect (CACE)* analysis. We plan to use two methods for such a CACE analysis: 1) instrumental variable (IV) analysis and 2) propensity score (PS) analysis. These methods are based on different underlying assumptions, we will discuss them in each chapter. Both analyses ideally deal with a situation whereby the intervention is administered at one time point only since the definition of non-uptake/-compliance/-adherence to the intervention is based on one overall value, i.e. the "point compliance". Therefore, we first define the point compliance in PEBRA. This is a reasonable assumption. However, we may extend the analysis to a situation whereby the intervention is administered over time and thus, time-varying non-uptake/-compliance/-adherence is taken into account ("sustained compliance"), using g-estimation methods.
+
+## First, we define a reasonable "point compliance" in PEBRA intervention.
+
+This analysis shall answers the question: "What would be the treatment effect if participants would have chosen the PEBRA model?" So, this includes all participants that chose any peer-educator support vs those that chose only nurse support (i.e. not the PEBRA model) => variable pe_support (see above)
+
+### TABLE characteristics by group and by complier within intervention group
+
+```{r}
+# pe_support
+table(df$pe_support, useNA = "always") # 11 wanted ONLY nurse-support, i.e., did not choose PEBRA model.
+df <- df %>% 
+  mutate(pe_support = case_when(pe_support == "Yes" ~ "Accepted PEBRA",
+                                pe_support == "No" ~ "Refused PEBRA"))
+
+# table for sociodemographic characteristics
+vars.list <- c("ARM","pe_support","GENDER","AGE","CELL_GIVEN","SEX_ORIENT","currently_attending","no_schooling","N_school","emplyoment","occupation","profession","Maritalstatus","pregnant_breastfeeding","Howmany","using_fp","N_HIV_question","expenses_transport_yn","expenses_transport_cost","expenses_food_yn","expenses_food_cost","diagnosis_year_cat","time_diag_enrol","artstart_year_cat","time_artstart_enrol","infection_year_cat","time_infection_enrol","CurrentARTregimen","Currently_TBx","cd4_start_cat","baseline_Vl_cat","infection_mode")
+
+df_cace <- df[,colnames(df)%in%vars.list]
+df_cace <- df_cace[,match(vars.list,colnames(df_cace))]
+
+colnames(df_cace) <- vars.list <- c("ARM","complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation","Currently attending school","No schooling","Number of completed school years","Employment","Occupation","Profession (if (self-)employed)","Marital status","Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: transport costs","Expenses: food","Expenses: food costs","Year of HIV diagnosis","Years since HIV diagnosis","Year of starting ART","Years since starting ART","Year of HIV infection","Years since HIV infection","Current ART regimen","Currently on TB treatment","CD4 count at ART start","Baseline viral load","How do you believe you were infected with HIV?")
+
+# in intervention arm only
+df_cace_int <- df_cace %>%
+  filter(ARM == "interv.")
+table_cace_int <- tableone::CreateTableOne(data = df_cace_int, vars = vars.list[!vars.list %in% c("complier", "ARM")], strata = "complier", includeNA = TRUE, test = TRUE, addOverall = TRUE)
+capture.output(table_cace_int <- print(table_cace_int, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = TRUE,printToggle = FALSE,missing = TRUE))
+
+#print
+knitr::kable(table_cace_int,caption = "Baseline characteristics of intervention participants, by compliance to PEBRA model")
+
+# add the overall table
+# take out missing and total
+table_cace_int <- tableone::CreateTableOne(data = df_cace_int, vars = vars.list[!vars.list %in% c("complier", "ARM")], strata = "complier", includeNA = TRUE, test = FALSE, addOverall = FALSE)
+capture.output(table_cace_int <- print(table_cace_int, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = FALSE))
+
+table_cace <- tableone::CreateTableOne(data = df_cace, vars = vars.list[!vars.list %in% c("complier", "ARM")], strata = "ARM", includeNA = TRUE, test = FALSE, addOverall = FALSE)
+capture.output(table_cace <- print(table_cace, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = FALSE))
+
+#print both alongside
+table_cace_overall <- cbind(table_cace, table_cace_int)
+knitr::kable(table_cace_overall,caption = "Baseline characteristics by randomization group and of participants that refused or accepted the PEBRA model")
+
+```
+
+
+
+
+Therefore, we also performed instrumental variable IV analysis using the two-stage least squares method to account for possible non-acceptance in the intervention group as a sensitivity analysis [29, 31]. In the first stage, the relation between treatment assignment and treatment acceptance (compliance) was estimated [32]. In the second stage, the effect of the exercise program on the outcome was estimated, using the predicted values from the first stage as an independ- ent variable in a linear regression model. 

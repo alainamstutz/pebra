@@ -108,8 +108,7 @@ Table: Baseline characteristics: socio-demographic, missing values in categorica
 |                                                                                 |NA                                |89 (29.0)            |38 (24.2)            |51 (34.0)            |        |
 |Number of children (%)                                                           |0                                 |200 (65.1)           |91 (58.0)            |109 (72.7)           |0.0     |
 |                                                                                 |1                                 |81 (26.4)            |46 (29.3)            |35 (23.3)            |        |
-|                                                                                 |2                                 |24 ( 7.8)            |18 (11.5)            |6 ( 4.0)             |        |
-|                                                                                 |3                                 |2 ( 0.7)             |2 ( 1.3)             |0 ( 0.0)             |        |
+|                                                                                 |2 or 3                            |26 ( 8.5)            |20 (12.7)            |6 ( 4.0)             |        |
 |Contraception use (%)                                                            |I prefer not to answer            |23 ( 7.5)            |12 ( 7.6)            |11 ( 7.3)            |2.3     |
 |                                                                                 |No                                |86 (28.0)            |18 (11.5)            |68 (45.3)            |        |
 |                                                                                 |Not currently sexually active     |57 (18.6)            |38 (24.2)            |19 (12.7)            |        |
@@ -689,3 +688,262 @@ Table: per-protocol individual-level analysis adjusted for district and gender
 |DISTRICTMKG    |       0.68|(0.42 to 1.12)      |   0.127|
 |GENDERmale     |       1.27|(0.76 to 2.12)      |   0.368|
 
+# Complier Average Causal Effect (CACE) analysis (i.e., optimized per-protocol analysis)
+
+The ITT analysis estimates a "policy-level" estimate, meaning the effect if PEBRA model is being implemented at a health facility, irrespective of uptake and adherence to the care model by individual participants.
+The per-protocol analysis according to protocol/publication excludes participants with missing VL measurements at 6 and 12 months. This is based on a strong assumption that participants with missing VL measurements are not different to those participants with available VL measurements with respect to all predictors of outcome since it compromises randomization. Moreover, it is still a "policy-level" estimate; it does not tell a patient or a clinician what the effect of the PEBRA model is if a patient adheres to the model as intended. Besides, the non-uptake in the intervention dilutes both these trial estimates.
+A better option is to conduct a *Complier Average Causal Effect (CACE)* analysis. We plan to use two methods for such a CACE analysis: 1) instrumental variable (IV) analysis and 2) propensity score (PS) analysis. These methods are based on different underlying assumptions, we will discuss them in each chapter. Both analyses ideally deal with a situation whereby the intervention is administered at one time point only since the definition of non-uptake/-compliance/-adherence to the intervention is based on one overall value, i.e. the "point compliance". Therefore, we first define the point compliance in PEBRA. This is a reasonable assumption. However, we may extend the analysis to a situation whereby the intervention is administered over time and thus, time-varying non-uptake/-compliance/-adherence is taken into account ("sustained compliance"), using g-estimation methods.
+
+## First, we define a reasonable "point compliance" in PEBRA intervention.
+
+This analysis shall answers the question: "What would be the treatment effect if participants would have chosen the PEBRA model?" So, this includes all participants that chose any peer-educator support vs those that chose only nurse support (i.e. not the PEBRA model) => variable pe_support (see above)
+
+### TABLE characteristics by group and by complier within intervention group
+
+
+```r
+# pe_support
+table(df$pe_support, useNA = "always") # 11 wanted ONLY nurse-support, i.e., did not choose PEBRA model.
+```
+
+```
+## 
+##   No  Yes <NA> 
+##   11  139  157
+```
+
+```r
+df <- df %>% 
+  mutate(pe_support = case_when(pe_support == "Yes" ~ "Accepted PEBRA",
+                                pe_support == "No" ~ "Refused PEBRA"))
+
+# table for sociodemographic characteristics
+vars.list <- c("ARM","pe_support","GENDER","AGE","CELL_GIVEN","SEX_ORIENT","currently_attending","no_schooling","N_school","emplyoment","occupation","profession","Maritalstatus","pregnant_breastfeeding","Howmany","using_fp","N_HIV_question","expenses_transport_yn","expenses_transport_cost","expenses_food_yn","expenses_food_cost","diagnosis_year_cat","time_diag_enrol","artstart_year_cat","time_artstart_enrol","infection_year_cat","time_infection_enrol","CurrentARTregimen","Currently_TBx","cd4_start_cat","baseline_Vl_cat","infection_mode")
+
+df_cace <- df[,colnames(df)%in%vars.list]
+df_cace <- df_cace[,match(vars.list,colnames(df_cace))]
+
+colnames(df_cace) <- vars.list <- c("ARM","complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation","Currently attending school","No schooling","Number of completed school years","Employment","Occupation","Profession (if (self-)employed)","Marital status","Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: transport costs","Expenses: food","Expenses: food costs","Year of HIV diagnosis","Years since HIV diagnosis","Year of starting ART","Years since starting ART","Year of HIV infection","Years since HIV infection","Current ART regimen","Currently on TB treatment","CD4 count at ART start","Baseline viral load","How do you believe you were infected with HIV?")
+
+# in intervention arm only
+df_cace_int <- df_cace %>%
+  filter(ARM == "interv.")
+table_cace_int <- tableone::CreateTableOne(data = df_cace_int, vars = vars.list[!vars.list %in% c("complier", "ARM")], strata = "complier", includeNA = TRUE, test = TRUE, addOverall = TRUE)
+capture.output(table_cace_int <- print(table_cace_int, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = TRUE,printToggle = FALSE,missing = TRUE))
+```
+
+```
+## character(0)
+```
+
+```r
+#print
+knitr::kable(table_cace_int,caption = "Baseline characteristics of intervention participants, by compliance to PEBRA model")
+```
+
+
+
+Table: Baseline characteristics of intervention participants, by compliance to PEBRA model
+
+|                                                                                 |level                             |Overall              |Accepted PEBRA       |Refused PEBRA        |p     |test    |Missing |
+|:--------------------------------------------------------------------------------|:---------------------------------|:--------------------|:--------------------|:--------------------|:-----|:-------|:-------|
+|n                                                                                |                                  |150                  |139                  |11                   |      |        |        |
+|Gender (%)                                                                       |female                            |99 (66.0)            |91 (65.5)            |8 ( 72.7)            |0.874 |        |0.0     |
+|                                                                                 |male                              |51 (34.0)            |48 (34.5)            |3 ( 27.3)            |      |        |        |
+|Age at enrolment (median [IQR])                                                  |                                  |18.72 [16.81, 22.07] |18.37 [16.75, 21.87] |22.01 [18.92, 22.71] |0.055 |nonnorm |0.0     |
+|Cell phone to receive confidential information (%)                               |No                                |54 (36.0)            |51 (36.7)            |3 ( 27.3)            |0.764 |        |0.0     |
+|                                                                                 |Yes                               |96 (64.0)            |88 (63.3)            |8 ( 72.7)            |      |        |        |
+|Sexual orientation (%)                                                           |gay or lesbian                    |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |0.923 |        |0.0     |
+|                                                                                 |prefer not to answer              |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |      |        |        |
+|                                                                                 |straight or heterosexual          |148 (98.7)           |137 (98.6)           |11 (100.0)           |      |        |        |
+|Currently attending school (%)                                                   |No                                |91 (60.7)            |82 (59.0)            |9 ( 81.8)            |0.242 |        |0.0     |
+|                                                                                 |Yes                               |59 (39.3)            |57 (41.0)            |2 ( 18.2)            |      |        |        |
+|No schooling (%)                                                                 |No                                |149 (99.3)           |138 (99.3)           |11 (100.0)           |1.000 |        |0.0     |
+|                                                                                 |Yes                               |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |      |        |        |
+|Number of completed school years (median [IQR])                                  |                                  |9.00 [7.25, 10.00]   |9.00 [7.50, 10.00]   |9.00 [7.50, 11.00]   |0.910 |nonnorm |0.0     |
+|Employment (%)                                                                   |Employed in Lesotho               |8 ( 5.3)             |7 ( 5.0)             |1 (  9.1)            |0.949 |        |0.0     |
+|                                                                                 |Employed in RSA                   |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |      |        |        |
+|                                                                                 |Housewife                         |18 (12.0)            |17 (12.2)            |1 (  9.1)            |      |        |        |
+|                                                                                 |No regular income / unemployed    |115 (76.7)           |106 (76.3)           |9 ( 81.8)            |      |        |        |
+|                                                                                 |Self-employed with regular income |4 ( 2.7)             |4 ( 2.9)             |0 (  0.0)            |      |        |        |
+|                                                                                 |Subsistence farming               |4 ( 2.7)             |4 ( 2.9)             |0 (  0.0)            |      |        |        |
+|Occupation (%)                                                                   |(self-)employed                   |13 ( 8.7)            |12 ( 8.6)            |1 (  9.1)            |0.356 |        |0.0     |
+|                                                                                 |attending school                  |57 (38.0)            |55 (39.6)            |2 ( 18.2)            |      |        |        |
+|                                                                                 |nothing                           |80 (53.3)            |72 (51.8)            |8 ( 72.7)            |      |        |        |
+|Profession (if (self-)employed) (%)                                              |Business man/woman                |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |0.950 |        |91.3    |
+|                                                                                 |Domestic worker                   |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |      |        |        |
+|                                                                                 |Herdboy                           |3 ( 2.0)             |3 ( 2.2)             |0 (  0.0)            |      |        |        |
+|                                                                                 |Other                             |8 ( 5.3)             |7 ( 5.0)             |1 (  9.1)            |      |        |        |
+|                                                                                 |NA                                |137 (91.3)           |127 (91.4)           |10 ( 90.9)           |      |        |        |
+|Marital status (%)                                                               |div/sep/wid                       |4 ( 2.7)             |4 ( 2.9)             |0 (  0.0)            |0.076 |        |0.0     |
+|                                                                                 |married                           |39 (26.0)            |33 (23.7)            |6 ( 54.5)            |      |        |        |
+|                                                                                 |single                            |107 (71.3)           |102 (73.4)           |5 ( 45.5)            |      |        |        |
+|Pregnant  or breastfeeding (%)                                                   |No                                |80 (53.3)            |75 (54.0)            |5 ( 45.5)            |0.317 |        |34.0    |
+|                                                                                 |Yes                               |19 (12.7)            |16 (11.5)            |3 ( 27.3)            |      |        |        |
+|                                                                                 |NA                                |51 (34.0)            |48 (34.5)            |3 ( 27.3)            |      |        |        |
+|Number of children (%)                                                           |0                                 |109 (72.7)           |103 (74.1)           |6 ( 54.5)            |0.037 |        |0.0     |
+|                                                                                 |1                                 |35 (23.3)            |32 (23.0)            |3 ( 27.3)            |      |        |        |
+|                                                                                 |2 or 3                            |6 ( 4.0)             |4 ( 2.9)             |2 ( 18.2)            |      |        |        |
+|Contraception use (%)                                                            |I prefer not to answer            |11 ( 7.3)            |11 ( 7.9)            |0 (  0.0)            |0.361 |        |2.0     |
+|                                                                                 |No                                |68 (45.3)            |63 (45.3)            |5 ( 45.5)            |      |        |        |
+|                                                                                 |Not currently sexually active     |19 (12.7)            |19 (13.7)            |0 (  0.0)            |      |        |        |
+|                                                                                 |Yes                               |49 (32.7)            |43 (30.9)            |6 ( 54.5)            |      |        |        |
+|                                                                                 |NA                                |3 ( 2.0)             |3 ( 2.2)             |0 (  0.0)            |      |        |        |
+|Number of correctly answered HIV knowledge questions (maximum 10) (median [IQR]) |                                  |9.00 [9.00, 10.00]   |9.00 [9.00, 10.00]   |9.00 [9.00, 9.00]    |0.280 |nonnorm |0.0     |
+|Expenses: transport (%)                                                          |no                                |100 (66.7)           |93 (66.9)            |7 ( 63.6)            |1.000 |        |0.0     |
+|                                                                                 |yes                               |50 (33.3)            |46 (33.1)            |4 ( 36.4)            |      |        |        |
+|Expenses: transport costs (median [IQR])                                         |                                  |20.00 [10.00, 30.00] |20.00 [10.00, 30.00] |12.50 [9.75, 18.75]  |0.472 |nonnorm |66.7    |
+|Expenses: food (%)                                                               |no                                |130 (86.7)           |122 (87.8)           |8 ( 72.7)            |0.341 |        |0.0     |
+|                                                                                 |yes                               |20 (13.3)            |17 (12.2)            |3 ( 27.3)            |      |        |        |
+|Expenses: food costs (median [IQR])                                              |                                  |10.00 [5.00, 21.25]  |10.00 [5.00, 20.00]  |20.00 [12.50, 25.00] |0.593 |nonnorm |86.7    |
+|Year of HIV diagnosis (%)                                                        |2005-2009                         |45 (30.0)            |44 (31.7)            |1 (  9.1)            |0.284 |        |0.0     |
+|                                                                                 |2010-2014                         |39 (26.0)            |35 (25.2)            |4 ( 36.4)            |      |        |        |
+|                                                                                 |2015-2020                         |66 (44.0)            |60 (43.2)            |6 ( 54.5)            |      |        |        |
+|Years since HIV diagnosis (median [IQR])                                         |                                  |5.45 [2.91, 10.99]   |5.76 [2.97, 11.13]   |3.28 [1.21, 6.20]    |0.057 |nonnorm |0.0     |
+|Year of starting ART (%)                                                         |2005-2009                         |35 (23.3)            |35 (25.2)            |0 (  0.0)            |0.104 |        |0.0     |
+|                                                                                 |2010-2014                         |39 (26.0)            |34 (24.5)            |5 ( 45.5)            |      |        |        |
+|                                                                                 |2015-2020                         |76 (50.7)            |70 (50.4)            |6 ( 54.5)            |      |        |        |
+|Years since starting ART (median [IQR])                                          |                                  |4.90 [2.67, 9.35]    |4.98 [2.84, 9.74]    |3.28 [1.21, 5.09]    |0.063 |nonnorm |0.0     |
+|Year of HIV infection (%)                                                        |1995-1999                         |4 ( 2.7)             |4 ( 2.9)             |0 (  0.0)            |0.096 |        |0.0     |
+|                                                                                 |2000-2004                         |23 (15.3)            |23 (16.5)            |0 (  0.0)            |      |        |        |
+|                                                                                 |2005-2009                         |39 (26.0)            |38 (27.3)            |1 (  9.1)            |      |        |        |
+|                                                                                 |2010-2014                         |29 (19.3)            |24 (17.3)            |5 ( 45.5)            |      |        |        |
+|                                                                                 |2015-2020                         |55 (36.7)            |50 (36.0)            |5 ( 45.5)            |      |        |        |
+|Years since HIV infection (median [IQR])                                         |                                  |8.43 [3.88, 12.93]   |9.90 [3.89, 12.98]   |5.91 [2.90, 7.92]    |0.040 |nonnorm |0.0     |
+|Current ART regimen (%)                                                          |DTG-based                         |14 ( 9.3)            |12 ( 8.6)            |2 ( 18.2)            |0.650 |        |0.0     |
+|                                                                                 |EFV-based                         |108 (72.0)           |100 (71.9)           |8 ( 72.7)            |      |        |        |
+|                                                                                 |LPV/r-based                       |3 ( 2.0)             |3 ( 2.2)             |0 (  0.0)            |      |        |        |
+|                                                                                 |NVP-based                         |25 (16.7)            |24 (17.3)            |1 (  9.1)            |      |        |        |
+|Currently on TB treatment (%)                                                    |No                                |148 (98.7)           |137 (98.6)           |11 (100.0)           |1.000 |        |0.0     |
+|                                                                                 |Yes                               |2 ( 1.3)             |2 ( 1.4)             |0 (  0.0)            |      |        |        |
+|CD4 count at ART start (%)                                                       |<200                              |23 (15.3)            |23 (16.5)            |0 (  0.0)            |0.376 |        |60.7    |
+|                                                                                 |200-499                           |21 (14.0)            |20 (14.4)            |1 (  9.1)            |      |        |        |
+|                                                                                 |>499                              |15 (10.0)            |13 ( 9.4)            |2 ( 18.2)            |      |        |        |
+|                                                                                 |NA                                |91 (60.7)            |83 (59.7)            |8 ( 72.7)            |      |        |        |
+|Baseline viral load (%)                                                          |<20                               |82 (54.7)            |77 (55.4)            |5 ( 45.5)            |0.858 |        |11.3    |
+|                                                                                 |20-999                            |33 (22.0)            |30 (21.6)            |3 ( 27.3)            |      |        |        |
+|                                                                                 |>999                              |18 (12.0)            |16 (11.5)            |2 ( 18.2)            |      |        |        |
+|                                                                                 |NA                                |17 (11.3)            |16 (11.5)            |1 (  9.1)            |      |        |        |
+|How do you believe you were infected with HIV? (%)                               |horizontal                        |35 (23.3)            |31 (22.3)            |4 ( 36.4)            |0.749 |        |0.0     |
+|                                                                                 |I don't know                      |53 (35.3)            |50 (36.0)            |3 ( 27.3)            |      |        |        |
+|                                                                                 |I prefer not to answer            |1 ( 0.7)             |1 ( 0.7)             |0 (  0.0)            |      |        |        |
+|                                                                                 |vertical                          |61 (40.7)            |57 (41.0)            |4 ( 36.4)            |      |        |        |
+
+```r
+# add the overall table
+# take out missing and total
+table_cace_int <- tableone::CreateTableOne(data = df_cace_int, vars = vars.list[!vars.list %in% c("complier", "ARM")], strata = "complier", includeNA = TRUE, test = FALSE, addOverall = FALSE)
+capture.output(table_cace_int <- print(table_cace_int, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = FALSE))
+```
+
+```
+## character(0)
+```
+
+```r
+table_cace <- tableone::CreateTableOne(data = df_cace, vars = vars.list[!vars.list %in% c("complier", "ARM")], strata = "ARM", includeNA = TRUE, test = FALSE, addOverall = FALSE)
+capture.output(table_cace <- print(table_cace, nonnormal = vars.list,catDigits = 1,SMD = TRUE,showAllLevels = TRUE,test = FALSE,printToggle = FALSE,missing = FALSE))
+```
+
+```
+## character(0)
+```
+
+```r
+#print both alongside
+table_cace_overall <- cbind(table_cace, table_cace_int)
+knitr::kable(table_cace_overall,caption = "Baseline characteristics by randomization group and of participants that refused or accepted the PEBRA model")
+```
+
+
+
+Table: Baseline characteristics by randomization group and of participants that refused or accepted the PEBRA model
+
+|                                                                                 |level                             |control              |interv.              |level                             |Accepted PEBRA       |Refused PEBRA        |
+|:--------------------------------------------------------------------------------|:---------------------------------|:--------------------|:--------------------|:---------------------------------|:--------------------|:--------------------|
+|n                                                                                |                                  |157                  |150                  |                                  |139                  |11                   |
+|Gender (%)                                                                       |female                            |119 (75.8)           |99 (66.0)            |female                            |91 (65.5)            |8 ( 72.7)            |
+|                                                                                 |male                              |38 (24.2)            |51 (34.0)            |male                              |48 (34.5)            |3 ( 27.3)            |
+|Age at enrolment (median [IQR])                                                  |                                  |20.12 [17.03, 22.94] |18.72 [16.81, 22.07] |                                  |18.37 [16.75, 21.87] |22.01 [18.92, 22.71] |
+|Cell phone to receive confidential information (%)                               |No                                |52 (33.1)            |54 (36.0)            |No                                |51 (36.7)            |3 ( 27.3)            |
+|                                                                                 |Yes                               |105 (66.9)           |96 (64.0)            |Yes                               |88 (63.3)            |8 ( 72.7)            |
+|Sexual orientation (%)                                                           |gay or lesbian                    |0 ( 0.0)             |1 ( 0.7)             |gay or lesbian                    |1 ( 0.7)             |0 (  0.0)            |
+|                                                                                 |prefer not to answer              |1 ( 0.6)             |1 ( 0.7)             |prefer not to answer              |1 ( 0.7)             |0 (  0.0)            |
+|                                                                                 |straight or heterosexual          |156 (99.4)           |148 (98.7)           |straight or heterosexual          |137 (98.6)           |11 (100.0)           |
+|Currently attending school (%)                                                   |No                                |121 (77.1)           |91 (60.7)            |No                                |82 (59.0)            |9 ( 81.8)            |
+|                                                                                 |Yes                               |36 (22.9)            |59 (39.3)            |Yes                               |57 (41.0)            |2 ( 18.2)            |
+|No schooling (%)                                                                 |No                                |153 (97.5)           |149 (99.3)           |No                                |138 (99.3)           |11 (100.0)           |
+|                                                                                 |Yes                               |4 ( 2.5)             |1 ( 0.7)             |Yes                               |1 ( 0.7)             |0 (  0.0)            |
+|Number of completed school years (median [IQR])                                  |                                  |9.00 [7.00, 11.00]   |9.00 [7.25, 10.00]   |                                  |9.00 [7.50, 10.00]   |9.00 [7.50, 11.00]   |
+|Employment (%)                                                                   |Employed in Lesotho               |7 ( 4.5)             |8 ( 5.3)             |Employed in Lesotho               |7 ( 5.0)             |1 (  9.1)            |
+|                                                                                 |Employed in RSA                   |1 ( 0.6)             |1 ( 0.7)             |Employed in RSA                   |1 ( 0.7)             |0 (  0.0)            |
+|                                                                                 |Housewife                         |25 (15.9)            |18 (12.0)            |Housewife                         |17 (12.2)            |1 (  9.1)            |
+|                                                                                 |No regular income / unemployed    |116 (73.9)           |115 (76.7)           |No regular income / unemployed    |106 (76.3)           |9 ( 81.8)            |
+|                                                                                 |Self-employed with regular income |1 ( 0.6)             |4 ( 2.7)             |Self-employed with regular income |4 ( 2.9)             |0 (  0.0)            |
+|                                                                                 |Subsistence farming               |7 ( 4.5)             |4 ( 2.7)             |Subsistence farming               |4 ( 2.9)             |0 (  0.0)            |
+|Occupation (%)                                                                   |(self-)employed                   |9 ( 5.7)             |13 ( 8.7)            |(self-)employed                   |12 ( 8.6)            |1 (  9.1)            |
+|                                                                                 |attending school                  |36 (22.9)            |57 (38.0)            |attending school                  |55 (39.6)            |2 ( 18.2)            |
+|                                                                                 |nothing                           |112 (71.3)           |80 (53.3)            |nothing                           |72 (51.8)            |8 ( 72.7)            |
+|Profession (if (self-)employed) (%)                                              |Business man/woman                |2 ( 1.3)             |1 ( 0.7)             |Business man/woman                |1 ( 0.7)             |0 (  0.0)            |
+|                                                                                 |Domestic worker                   |3 ( 1.9)             |1 ( 0.7)             |Domestic worker                   |1 ( 0.7)             |0 (  0.0)            |
+|                                                                                 |Herdboy                           |0 ( 0.0)             |3 ( 2.0)             |Herdboy                           |3 ( 2.2)             |0 (  0.0)            |
+|                                                                                 |Other                             |4 ( 2.5)             |8 ( 5.3)             |Other                             |7 ( 5.0)             |1 (  9.1)            |
+|                                                                                 |NA                                |148 (94.3)           |137 (91.3)           |NA                                |127 (91.4)           |10 ( 90.9)           |
+|Marital status (%)                                                               |div/sep/wid                       |4 ( 2.5)             |4 ( 2.7)             |div/sep/wid                       |4 ( 2.9)             |0 (  0.0)            |
+|                                                                                 |married                           |54 (34.4)            |39 (26.0)            |married                           |33 (23.7)            |6 ( 54.5)            |
+|                                                                                 |single                            |99 (63.1)            |107 (71.3)           |single                            |102 (73.4)           |5 ( 45.5)            |
+|Pregnant  or breastfeeding (%)                                                   |No                                |104 (66.2)           |80 (53.3)            |No                                |75 (54.0)            |5 ( 45.5)            |
+|                                                                                 |Yes                               |15 ( 9.6)            |19 (12.7)            |Yes                               |16 (11.5)            |3 ( 27.3)            |
+|                                                                                 |NA                                |38 (24.2)            |51 (34.0)            |NA                                |48 (34.5)            |3 ( 27.3)            |
+|Number of children (%)                                                           |0                                 |91 (58.0)            |109 (72.7)           |0                                 |103 (74.1)           |6 ( 54.5)            |
+|                                                                                 |1                                 |46 (29.3)            |35 (23.3)            |1                                 |32 (23.0)            |3 ( 27.3)            |
+|                                                                                 |2 or 3                            |20 (12.7)            |6 ( 4.0)             |2 or 3                            |4 ( 2.9)             |2 ( 18.2)            |
+|Contraception use (%)                                                            |I prefer not to answer            |12 ( 7.6)            |11 ( 7.3)            |I prefer not to answer            |11 ( 7.9)            |0 (  0.0)            |
+|                                                                                 |No                                |18 (11.5)            |68 (45.3)            |No                                |63 (45.3)            |5 ( 45.5)            |
+|                                                                                 |Not currently sexually active     |38 (24.2)            |19 (12.7)            |Not currently sexually active     |19 (13.7)            |0 (  0.0)            |
+|                                                                                 |Yes                               |85 (54.1)            |49 (32.7)            |Yes                               |43 (30.9)            |6 ( 54.5)            |
+|                                                                                 |NA                                |4 ( 2.5)             |3 ( 2.0)             |NA                                |3 ( 2.2)             |0 (  0.0)            |
+|Number of correctly answered HIV knowledge questions (maximum 10) (median [IQR]) |                                  |9.00 [9.00, 10.00]   |9.00 [9.00, 10.00]   |                                  |9.00 [9.00, 10.00]   |9.00 [9.00, 9.00]    |
+|Expenses: transport (%)                                                          |no                                |104 (66.2)           |100 (66.7)           |no                                |93 (66.9)            |7 ( 63.6)            |
+|                                                                                 |yes                               |53 (33.8)            |50 (33.3)            |yes                               |46 (33.1)            |4 ( 36.4)            |
+|Expenses: transport costs (median [IQR])                                         |                                  |16.00 [8.00, 35.00]  |20.00 [10.00, 30.00] |                                  |20.00 [10.00, 30.00] |12.50 [9.75, 18.75]  |
+|Expenses: food (%)                                                               |no                                |130 (82.8)           |130 (86.7)           |no                                |122 (87.8)           |8 ( 72.7)            |
+|                                                                                 |yes                               |27 (17.2)            |20 (13.3)            |yes                               |17 (12.2)            |3 ( 27.3)            |
+|Expenses: food costs (median [IQR])                                              |                                  |10.00 [8.00, 20.00]  |10.00 [5.00, 21.25]  |                                  |10.00 [5.00, 20.00]  |20.00 [12.50, 25.00] |
+|Year of HIV diagnosis (%)                                                        |2005-2009                         |29 (18.5)            |45 (30.0)            |2005-2009                         |44 (31.7)            |1 (  9.1)            |
+|                                                                                 |2010-2014                         |30 (19.1)            |39 (26.0)            |2010-2014                         |35 (25.2)            |4 ( 36.4)            |
+|                                                                                 |2015-2020                         |98 (62.4)            |66 (44.0)            |2015-2020                         |60 (43.2)            |6 ( 54.5)            |
+|Years since HIV diagnosis (median [IQR])                                         |                                  |3.63 [1.52, 7.87]    |5.45 [2.91, 10.99]   |                                  |5.76 [2.97, 11.13]   |3.28 [1.21, 6.20]    |
+|Year of starting ART (%)                                                         |2005-2009                         |21 (13.4)            |35 (23.3)            |2005-2009                         |35 (25.2)            |0 (  0.0)            |
+|                                                                                 |2010-2014                         |27 (17.2)            |39 (26.0)            |2010-2014                         |34 (24.5)            |5 ( 45.5)            |
+|                                                                                 |2015-2020                         |109 (69.4)           |76 (50.7)            |2015-2020                         |70 (50.4)            |6 ( 54.5)            |
+|Years since starting ART (median [IQR])                                          |                                  |3.14 [1.21, 5.82]    |4.90 [2.67, 9.35]    |                                  |4.98 [2.84, 9.74]    |3.28 [1.21, 5.09]    |
+|Year of HIV infection (%)                                                        |1995-1999                         |6 ( 3.8)             |4 ( 2.7)             |1995-1999                         |4 ( 2.9)             |0 (  0.0)            |
+|                                                                                 |2000-2004                         |26 (16.6)            |23 (15.3)            |2000-2004                         |23 (16.5)            |0 (  0.0)            |
+|                                                                                 |2005-2009                         |18 (11.5)            |39 (26.0)            |2005-2009                         |38 (27.3)            |1 (  9.1)            |
+|                                                                                 |2010-2014                         |19 (12.1)            |29 (19.3)            |2010-2014                         |24 (17.3)            |5 ( 45.5)            |
+|                                                                                 |2015-2020                         |88 (56.1)            |55 (36.7)            |2015-2020                         |50 (36.0)            |5 ( 45.5)            |
+|Years since HIV infection (median [IQR])                                         |                                  |4.93 [2.89, 12.87]   |8.43 [3.88, 12.93]   |                                  |9.90 [3.89, 12.98]   |5.91 [2.90, 7.92]    |
+|Current ART regimen (%)                                                          |DTG-based                         |26 (16.6)            |14 ( 9.3)            |DTG-based                         |12 ( 8.6)            |2 ( 18.2)            |
+|                                                                                 |EFV-based                         |104 (66.2)           |108 (72.0)           |EFV-based                         |100 (71.9)           |8 ( 72.7)            |
+|                                                                                 |LPV/r-based                       |5 ( 3.2)             |3 ( 2.0)             |LPV/r-based                       |3 ( 2.2)             |0 (  0.0)            |
+|                                                                                 |NVP-based                         |22 (14.0)            |25 (16.7)            |NVP-based                         |24 (17.3)            |1 (  9.1)            |
+|Currently on TB treatment (%)                                                    |No                                |151 (96.2)           |148 (98.7)           |No                                |137 (98.6)           |11 (100.0)           |
+|                                                                                 |Yes                               |6 ( 3.8)             |2 ( 1.3)             |Yes                               |2 ( 1.4)             |0 (  0.0)            |
+|CD4 count at ART start (%)                                                       |<200                              |13 ( 8.3)            |23 (15.3)            |<200                              |23 (16.5)            |0 (  0.0)            |
+|                                                                                 |200-499                           |32 (20.4)            |21 (14.0)            |200-499                           |20 (14.4)            |1 (  9.1)            |
+|                                                                                 |>499                              |24 (15.3)            |15 (10.0)            |>499                              |13 ( 9.4)            |2 ( 18.2)            |
+|                                                                                 |NA                                |88 (56.1)            |91 (60.7)            |NA                                |83 (59.7)            |8 ( 72.7)            |
+|Baseline viral load (%)                                                          |<20                               |84 (53.5)            |82 (54.7)            |<20                               |77 (55.4)            |5 ( 45.5)            |
+|                                                                                 |20-999                            |30 (19.1)            |33 (22.0)            |20-999                            |30 (21.6)            |3 ( 27.3)            |
+|                                                                                 |>999                              |26 (16.6)            |18 (12.0)            |>999                              |16 (11.5)            |2 ( 18.2)            |
+|                                                                                 |NA                                |17 (10.8)            |17 (11.3)            |NA                                |16 (11.5)            |1 (  9.1)            |
+|How do you believe you were infected with HIV? (%)                               |horizontal                        |56 (35.7)            |35 (23.3)            |horizontal                        |31 (22.3)            |4 ( 36.4)            |
+|                                                                                 |I don't know                      |50 (31.8)            |53 (35.3)            |I don't know                      |50 (36.0)            |3 ( 27.3)            |
+|                                                                                 |I prefer not to answer            |5 ( 3.2)             |1 ( 0.7)             |I prefer not to answer            |1 ( 0.7)             |0 (  0.0)            |
+|                                                                                 |vertical                          |46 (29.3)            |61 (40.7)            |vertical                          |57 (41.0)            |4 ( 36.4)            |
+
+
+
+
+Therefore, we also performed instrumental variable IV analysis using the two-stage least squares method to account for possible non-acceptance in the intervention group as a sensitivity analysis [29, 31]. In the first stage, the relation between treatment assignment and treatment acceptance (compliance) was estimated [32]. In the second stage, the effect of the exercise program on the outcome was estimated, using the predicted values from the first stage as an independ- ent variable in a linear regression model. 
