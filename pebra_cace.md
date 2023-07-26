@@ -1394,6 +1394,13 @@ Accordingly, the primary outcome was analysed using a TSLS model with randomizat
 In the second stage, the effect of the PEBRA model on the outcome was estimated, using the predicted values from the first stage as an independent variable in a logistic regression model.
 
 
+```r
+# In the 2SLS, we will estimate the predicted treatment in the first stage. We can do it by fitting logistic regression for PEBRA acceptance on randomization, important predictors, and then using the predict command to estimate the probabilities.
+
+df_cace %>% 
+  select("ARM", "complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation", "Number of completed school years", "Occupation", "Marital status", "Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: food","Years since HIV diagnosis","Years since starting ART","Years since HIV infection","Current ART regimen","Currently on TB treatment","Baseline viral load","How do you believe you were infected with HIV?")
+```
+
 ```
 ## # A tibble: 307 × 22
 ##    ARM   complier Gender `Age at enrolment` Cell phone to receive confidential…¹
@@ -1417,8 +1424,30 @@ In the second stage, the effect of the PEBRA model on the outcome was estimated,
 ## #   `Number of correctly answered HIV knowledge questions (maximum 10)` <dbl>, …
 ```
 
+```r
+# Stage 1 of 2SLS
+s1 <- glm(complier ~ ARM + 
+            `Years since HIV diagnosis` 
+          + Gender
+          + `Number of completed school years`
+          + Occupation
+          + `Current ART regimen`
+          , data = df_cace, family = binomial("logit"))
+```
+
 ```
 ## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+```
+
+```r
+df_cace$complier.new <- NA
+df_cace$complier.new <- predict(s1, type = "response")
+
+# In the second stage, we will fit the outcome model (the logistic regression) with the predicted treatment from the first stage and the confounders. Remember, we should use the robust sandwich SE to estimate the SE of the treatment effect correctly to account for the clustering effect of multiple observations per subject (Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. J Hum Resour. 2015;50(2):317-372.)
+
+# Stage 2 of 2SLS
+fit.2sls <- glm(`Primary endpoint reached as per primary analysis` ~ complier.new + `Years since HIV diagnosis` + Gender, data = df_cace, family = binomial("logit"))
+summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC0")
 ```
 
   <table class="table table-striped table-hover table-condensed table-responsive" style="width: auto !important; margin-left: auto; margin-right: auto;border-bottom: 0;">
@@ -1468,51 +1497,11 @@ In the second stage, the effect of the PEBRA model on the outcome was estimated,
 </tbody>
 <tfoot><tr><td style="padding: 0; " colspan="100%">
 <sup></sup> Standard errors: Robust, type = HC0</td></tr></tfoot>
-</table><table style="border-collapse:collapse; border:none;">
-<tr>
-<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
-<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">Primary endpoint reached<br>as per primary analysis</th>
-</tr>
-<tr>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Odds Ratios</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">p</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">(Intercept)</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.41</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.93&nbsp;&ndash;&nbsp;2.15</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.104</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">complier new</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.26</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.75&nbsp;&ndash;&nbsp;2.12</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.374</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Years since HIV diagnosis</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.01</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.96&nbsp;&ndash;&nbsp;1.07</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.656</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Gender [male]</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.07</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.63&nbsp;&ndash;&nbsp;1.83</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.809</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">307</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">R<sup>2</sup> Tjur</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.005</td>
-</tr>
-
 </table>
+
+```r
+# as expected, result similar but uncertainty increased
+```
 
 ## Now, conduct the second CACE analysis (sensitivity analysis), using PS (check UMBRELLA/Zelen_SSc).
 

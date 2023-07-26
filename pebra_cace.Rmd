@@ -966,7 +966,7 @@ Estimation of the CACE is most often done using a “two-stage least squares” 
 Accordingly, the primary outcome was analysed using a TSLS model with randomization as the instrumental variable and "accepting the PEBRA model" as the treatment variable. In the first stage, the relation between treatment assignment and treatment acceptance (compliance) was estimated.
 In the second stage, the effect of the PEBRA model on the outcome was estimated, using the predicted values from the first stage as an independent variable in a logistic regression model.
 
-```{r echo=FALSE}
+```{r echo=TRUE}
 # In the 2SLS, we will estimate the predicted treatment in the first stage. We can do it by fitting logistic regression for PEBRA acceptance on randomization, important predictors, and then using the predict command to estimate the probabilities.
 
 df_cace %>% 
@@ -989,10 +989,7 @@ df_cace$complier.new <- predict(s1, type = "response")
 fit.2sls <- glm(`Primary endpoint reached as per primary analysis` ~ complier.new + `Years since HIV diagnosis` + Gender, data = df_cace, family = binomial("logit"))
 summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC0")
 
-sjPlot::tab_model(fit.2sls)
-sjPlot::tab_model(primary)
-
-# result similar / 
+# as expected, result similar but uncertainty increased
 
 ```
 
