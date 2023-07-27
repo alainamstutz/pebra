@@ -1505,4 +1505,4 @@ summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC
 
 ## Now, conduct the second CACE analysis (sensitivity analysis), using PS (check UMBRELLA/Zelen_SSc).
 
-## Re-consider primary endpoint definition re missing outcomes. And consider MICE for missing covariates (check SPIN/UMBRELLA)
+## Re-consider primary endpoint definition re missing outcomes. And consider MICE for missing covariates (SPIN/UMBRELLA)
