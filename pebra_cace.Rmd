@@ -891,18 +891,17 @@ er <- df_er %>%
 tab_model(er)
 
 ```
-The OR (95% CI) of viral suppression for non-adherents versus controls was 1.30 (0.36-4.74) after adjustment for the variables of the primary model. These estimates indicate that non-compliers and controls have a different risk of viral suppression, and that direct adjustment for the measured baseline characteristics may be insufficient to eliminate the differences. The results may indicate that per protocol effect estimates will be biased when using any method that requires measurement and adjustment for all joint predictors of compliance and outcome (e.g. conventional regression, standardization, inverse probability weighting, propensity score matching, etc.) To unbiasedly estimate the per protocol effect of PEBRA model on viral suppression, we try first a method that does not require adjustment for joint predictors of compliance and outcome: instrumental variable (IV) estimation. (alternative explanation: the exclusion restriction is not true)
-
+The OR (95% CI) of viral suppression for non-adherents versus controls was 1.30 (0.36-4.74) after adjustment for the variables of the primary model. These estimates indicate that non-compliers and controls have a different risk of viral suppression, and that direct adjustment for the measured baseline characteristics might be insufficient to eliminate the differences. This implies that any method that requires measurement and adjustment for all joint predictors of compliance and outcome (e.g. conventional regression, standardization, inverse probability weighting, propensity score matching, etc.) might be insufficient to eliminate bias. Therefore, to estimate the per protocol effect of PEBRA model on viral suppression, we try first a method that does not require adjustment for joint predictors of compliance and outcome: instrumental variable (IV).
 
 ## Investigate further, esp. re predictors for compliance / add OR and 95% to table
-```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-df_or <- df_cace %>% # remove ARM and ENDPOINT and redundant variables (duplicates, used in overall categories, etc.)
-  select("complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation", "Number of completed school years", "Occupation", "Marital status", "Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: food","Years since HIV diagnosis","Years since starting ART","Years since HIV infection","Current ART regimen","Currently on TB treatment","Baseline viral load","How do you believe you were infected with HIV?")
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# df_or <- df_cace_int %>% # remove ARM and ENDPOINT and redundant variables (duplicates, used in overall categories, etc.)
+#   select("complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation", "Number of completed school years", "Occupation", "Marital status", "Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: food","Years since HIV diagnosis","Years since starting ART","Years since HIV infection","Current ART regimen","Currently on TB treatment","CD4 count at ART start","Baseline viral load","How do you believe you were infected with HIV?")
 
-# adjusted odds ratio model for each variable
-model <- glm(complier ~ 
-               Gender 
-             + `Age at enrolment` 
+# Fit a logistic regression model
+model <- glm(complier ~
+               Gender
+             + `Age at enrolment`
              + `Cell phone to receive confidential information`
              + `Sexual orientation`
              + `Number of completed school years`
@@ -921,36 +920,29 @@ model <- glm(complier ~
              + `Currently on TB treatment`
              + `Baseline viral load`
              + `How do you believe you were infected with HIV?`
-               , data = df_or, family = "binomial")
+               , data = df_cace_int, family = "binomial")
 
-summary(model)
+# Extract the coefficients, convert to ORs, round them, extract their standard errors, and calculate 95% CI
+coefficients <- coef(summary(model))
+odds_ratios <- exp(coefficients[, 1])
+odds_ratios_rounded <- round(odds_ratios, digits = 2)
+standard_errors <- coefficients[, 2]
+lower_ci <- exp(odds_ratios - 1.96 * standard_errors)
+upper_ci <- exp(odds_ratios + 1.96 * standard_errors)
 
-# Create a table with absolute values
-abs_table <- table(df_or$Gender, df_or$complier)
-# Add percentages using prop.table()
-perc_table <- prop.table(abs_table, margin = 2) * 100
-# Combine the absolute and percentage values in the same cell
-combined_table <- abs_table
-combined_table[] <- paste0(abs_table, " (", round(perc_table, 1), "%)")
-# Exclude the unnecessary levels from the combined table
-combined_table <- combined_table[-which(rownames(combined_table) == "female"), ]
+# Combine the adjusted Odds Ratios and Confidence Intervals into a data frame
+odds_ci_data <- data.frame(odds_ratios_rounded = odds_ratios_rounded,
+                           lower_ci = lower_ci,
+                           upper_ci = upper_ci)
 
-# Create an empty data frame to store the results
-results_or <- NULL
-results_or <- data.frame(Variable = c("Male"))
-results_or$`Refused PEBRA` <- combined_table[1]
-results_or$`Accepted PEBRA` <- combined_table[2]
-results_or$OddsRatio <- exp(coef(summary(model))[2, "Estimate"])
-results_or$CI_Lower <- exp(confint(model)[2,1])
-results_or$CI_Upper <- exp(confint(model)[2,2])
-
-# Print the baseline table
-# knitr::kable(baseline_table, caption = "Baseline characteristics predicting acceptance of PEBRA and their odds ratios with 96% confidence intervals, adjusted for all other variables")
+# Print the data frame with adjusted Odds Ratios and Confidence Intervals
+print(odds_ci_data)
+knitr::kable(odds_ci_data, caption = "Baseline characteristics predicting acceptance of PEBRA and their odds ratios with 96% confidence intervals, adjusted for all other variables")
 
 ```
 
 
-The table shows that some baseline characteristics were different between the accepters and refusers (transmission mode, baseline VL, baseline regimen, Years since HIV infection, Years since starting ART, etc.) -> to be explored more. Valid estimation of the traditional per protocol effect would require adjustment for these and any other prognostic factors that predict compliance. As a result, the per protocol effect cannot be generally estimated via a traditional per protocol analysis that directly compares the outcomes of the adherents and the controls. The conducted per protocol analysis above (according to protocol/publication) was different, and did estimate a different question.
+The table shows that some baseline characteristics were different between the accepters and refusers (age, Number of completed school years, Number of correctly answered HIV knowledge questions (maximum 10), Expenses: transportyes, Years since starting ART, Years since HIV infection, Current ART regimenEFV-based, Current ART regimenNVP-based, Baseline viral load20-999). Valid estimation of the traditional per protocol effect would require adjustment for these and any other prognostic factors that predict compliance. As a result, the per protocol effect cannot be generally estimated via a traditional per protocol analysis that directly compares the outcomes of the PEBRA compliant participants and the controls. 
 
 ## Now, we conduct the first CACE analysis, using IV.
 
@@ -967,32 +959,43 @@ Accordingly, the primary outcome was analysed using a TSLS model with randomizat
 In the second stage, the effect of the PEBRA model on the outcome was estimated, using the predicted values from the first stage as an independent variable in a logistic regression model.
 
 ```{r echo=TRUE}
-# In the 2SLS, we will estimate the predicted treatment in the first stage. We can do it by fitting logistic regression for PEBRA acceptance on randomization, important predictors, and then using the predict command to estimate the probabilities.
-
-df_cace %>% 
-  select("ARM", "complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation", "Number of completed school years", "Occupation", "Marital status", "Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: food","Years since HIV diagnosis","Years since starting ART","Years since HIV infection","Current ART regimen","Currently on TB treatment","Baseline viral load","How do you believe you were infected with HIV?")
+# In the 2SLS, we will estimate the predicted treatment in the first stage. We can do it by fitting logistic regression for PEBRA acceptance on randomization, important predictors (see previous chapter), and then using the predict command to estimate the probabilities.
 
 # Stage 1 of 2SLS
-s1 <- glm(complier ~ ARM + 
-            `Years since HIV diagnosis` 
-          + Gender
+s1 <- glm(complier ~ ARM 
+          + `Age at enrolment` 
           + `Number of completed school years`
-          + Occupation
+          + `Number of correctly answered HIV knowledge questions (maximum 10)`
+          + `Expenses: transport`
+          + `Years since starting ART`
+          + `Years since HIV infection` 
           + `Current ART regimen`
+          # + `Baseline viral load`
           , data = df_cace, family = binomial("logit"))
 df_cace$complier.new <- NA
 df_cace$complier.new <- predict(s1, type = "response")
 
-# In the second stage, we will fit the outcome model (the logistic regression) with the predicted treatment from the first stage and the confounders. Remember, we should use the robust sandwich SE to estimate the SE of the treatment effect correctly to account for the clustering effect of multiple observations per subject (Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. J Hum Resour. 2015;50(2):317-372.)
+# In the second stage, we will fit the outcome model (the logistic regression) with the predicted treatment from the first stage and the confounders. We should use the robust sandwich SE to estimate the SE of the treatment effect correctly to account for the clustering effect of multiple observations per subject (Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. J Hum Resour. 2015;50(2):317-372.)
 
 # Stage 2 of 2SLS
-fit.2sls <- glm(`Primary endpoint reached as per primary analysis` ~ complier.new + `Years since HIV diagnosis` + Gender, data = df_cace, family = binomial("logit"))
+fit.2sls <- glm(`Primary endpoint reached as per primary analysis` ~ complier.new 
+          + `Age at enrolment` 
+          + `Number of completed school years`
+          + `Number of correctly answered HIV knowledge questions (maximum 10)`
+          + `Expenses: transport`
+          + `Years since starting ART`
+          + `Years since HIV infection` 
+          + `Current ART regimen`
+          # + `Baseline viral load`
+          , data = df_cace, family = binomial("logit"))
 summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC0")
 
 # as expected, result similar but uncertainty increased
+tab_model(fit.2sls)
+tab_model(primary)
 
 ```
 
 ## Now, conduct the second CACE analysis (sensitivity analysis), using PS (check UMBRELLA/Zelen_SSc).
 
-## Re-consider primary endpoint definition re missing outcomes. And consider MICE for missing covariates (SPIN/UMBRELLA)
+## Re-consider primary endpoint definition re missing outcomes. Consider MICE for missing covariates (SPIN/UMBRELLA)

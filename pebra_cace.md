@@ -1370,14 +1370,153 @@ tab_model(er)
 </tr>
 
 </table>
-The OR (95% CI) of viral suppression for non-adherents versus controls was 1.30 (0.36-4.74) after adjustment for the variables of the primary model. These estimates indicate that non-compliers and controls have a different risk of viral suppression, and that direct adjustment for the measured baseline characteristics may be insufficient to eliminate the differences. The results may indicate that per protocol effect estimates will be biased when using any method that requires measurement and adjustment for all joint predictors of compliance and outcome (e.g. conventional regression, standardization, inverse probability weighting, propensity score matching, etc.) To unbiasedly estimate the per protocol effect of PEBRA model on viral suppression, we try first a method that does not require adjustment for joint predictors of compliance and outcome: instrumental variable (IV) estimation. (alternative explanation: the exclusion restriction is not true)
-
+The OR (95% CI) of viral suppression for non-adherents versus controls was 1.30 (0.36-4.74) after adjustment for the variables of the primary model. These estimates indicate that non-compliers and controls have a different risk of viral suppression, and that direct adjustment for the measured baseline characteristics might be insufficient to eliminate the differences. This implies that any method that requires measurement and adjustment for all joint predictors of compliance and outcome (e.g. conventional regression, standardization, inverse probability weighting, propensity score matching, etc.) might be insufficient to eliminate bias. Therefore, to estimate the per protocol effect of PEBRA model on viral suppression, we try first a method that does not require adjustment for joint predictors of compliance and outcome: instrumental variable (IV).
 
 ## Investigate further, esp. re predictors for compliance / add OR and 95% to table
 
+```
+##                                                                        odds_ratios_rounded
+## (Intercept)                                                                   4.808624e+22
+## Gendermale                                                                    4.000000e-01
+## `Age at enrolment`                                                            8.200000e-01
+## `Cell phone to receive confidential information`Yes                           9.900000e-01
+## `Sexual orientation`prefer not to answer                                      0.000000e+00
+## `Sexual orientation`straight or heterosexual                                  0.000000e+00
+## `Number of completed school years`                                            8.500000e-01
+## Occupationattending school                                                    6.000000e-02
+## Occupationnothing                                                             3.000000e-02
+## `Marital status`married                                                       0.000000e+00
+## `Marital status`single                                                        0.000000e+00
+## `Pregnant  or breastfeeding`Yes                                               5.600000e-01
+## `Number of children`1                                                         1.610000e+00
+## `Number of children`2 or 3                                                    6.000000e-02
+## `Number of correctly answered HIV knowledge questions (maximum 10)`           1.760000e+00
+## `Contraception use`No                                                         0.000000e+00
+## `Contraception use`Not currently sexually active                              5.350000e+00
+## `Contraception use`Yes                                                        0.000000e+00
+## `Expenses: transport`yes                                                      2.290000e+00
+## `Expenses: food`yes                                                           1.290000e+00
+## `Years since HIV diagnosis`                                                   6.900000e-01
+## `Years since starting ART`                                                    1.220000e+00
+## `Years since HIV infection`                                                   1.760000e+00
+## `Current ART regimen`EFV-based                                                1.687700e+02
+## `Current ART regimen`LPV/r-based                                              1.035717e+10
+## `Current ART regimen`NVP-based                                                2.235000e+01
+## `Currently on TB treatment`Yes                                                5.028742e+10
+## `Baseline viral load`20-999                                                   7.800000e+00
+## `Baseline viral load`>999                                                     1.900000e-01
+## `How do you believe you were infected with HIV?`I don't know                  1.160000e+00
+## `How do you believe you were infected with HIV?`I prefer not to answer        1.054006e+07
+## `How do you believe you were infected with HIV?`vertical                      4.000000e-02
+##                                                                            lower_ci
+## (Intercept)                                                                     Inf
+## Gendermale                                                             8.097512e-02
+## `Age at enrolment`                                                     1.412435e+00
+## `Cell phone to receive confidential information`Yes                    1.550341e-01
+## `Sexual orientation`prefer not to answer                               0.000000e+00
+## `Sexual orientation`straight or heterosexual                           0.000000e+00
+## `Number of completed school years`                                     1.195318e+00
+## Occupationattending school                                             4.783183e-03
+## Occupationnothing                                                      7.466727e-03
+## `Marital status`married                                                0.000000e+00
+## `Marital status`single                                                 0.000000e+00
+## `Pregnant  or breastfeeding`Yes                                        8.823367e-02
+## `Number of children`1                                                  1.152813e-01
+## `Number of children`2 or 3                                             4.977694e-03
+## `Number of correctly answered HIV knowledge questions (maximum 10)`    2.107801e+00
+## `Contraception use`No                                                  0.000000e+00
+## `Contraception use`Not currently sexually active                       0.000000e+00
+## `Contraception use`Yes                                                 0.000000e+00
+## `Expenses: transport`yes                                               1.006414e+00
+## `Expenses: food`yes                                                    1.240302e-01
+## `Years since HIV diagnosis`                                            5.057362e-01
+## `Years since starting ART`                                             1.791469e+00
+## `Years since HIV infection`                                            1.603421e+00
+## `Current ART regimen`EFV-based                                         1.082548e+71
+## `Current ART regimen`LPV/r-based                                                Inf
+## `Current ART regimen`NVP-based                                         3.375258e+07
+## `Currently on TB treatment`Yes                                                  Inf
+## `Baseline viral load`20-999                                            7.077853e+01
+## `Baseline viral load`>999                                              2.224390e-02
+## `How do you believe you were infected with HIV?`I don't know           2.150432e-01
+## `How do you believe you were infected with HIV?`I prefer not to answer          Inf
+## `How do you believe you were infected with HIV?`vertical               1.947953e-02
+##                                                                            upper_ci
+## (Intercept)                                                                     Inf
+## Gendermale                                                             2.764309e+01
+## `Age at enrolment`                                                     3.616828e+00
+## `Cell phone to receive confidential information`Yes                    4.638265e+01
+## `Sexual orientation`prefer not to answer                                        Inf
+## `Sexual orientation`straight or heterosexual                                    Inf
+## `Number of completed school years`                                     4.536999e+00
+## Occupationattending school                                             2.353135e+02
+## Occupationnothing                                                      1.409950e+02
+## `Marital status`married                                                         Inf
+## `Marital status`single                                                          Inf
+## `Pregnant  or breastfeeding`Yes                                        3.451948e+01
+## `Number of children`1                                                  2.179461e+02
+## `Number of children`2 or 3                                             2.285021e+02
+## `Number of correctly answered HIV knowledge questions (maximum 10)`    1.593470e+01
+## `Contraception use`No                                                           Inf
+## `Contraception use`Not currently sexually active                                Inf
+## `Contraception use`Yes                                                          Inf
+## `Expenses: transport`yes                                               9.734253e+01
+## `Expenses: food`yes                                                    1.054195e+02
+## `Years since HIV diagnosis`                                            7.894334e+00
+## `Years since starting ART`                                             6.438983e+00
+## `Years since HIV infection`                                            2.087733e+01
+## `Current ART regimen`EFV-based                                         3.600601e+75
+## `Current ART regimen`LPV/r-based                                                Inf
+## `Current ART regimen`NVP-based                                         7.711470e+11
+## `Currently on TB treatment`Yes                                                  Inf
+## `Baseline viral load`20-999                                            8.453104e+04
+## `Baseline viral load`>999                                              6.538592e+01
+## `How do you believe you were infected with HIV?`I don't know           4.752558e+01
+## `How do you believe you were infected with HIV?`I prefer not to answer          Inf
+## `How do you believe you were infected with HIV?`vertical               5.615680e+01
+```
 
 
-The table shows that some baseline characteristics were different between the accepters and refusers (transmission mode, baseline VL, baseline regimen, Years since HIV infection, Years since starting ART, etc.) -> to be explored more. Valid estimation of the traditional per protocol effect would require adjustment for these and any other prognostic factors that predict compliance. As a result, the per protocol effect cannot be generally estimated via a traditional per protocol analysis that directly compares the outcomes of the adherents and the controls. The conducted per protocol analysis above (according to protocol/publication) was different, and did estimate a different question.
+
+Table: Baseline characteristics predicting acceptance of PEBRA and their odds ratios with 96% confidence intervals, adjusted for all other variables
+
+|                                                                       | odds_ratios_rounded|     lower_ci|     upper_ci|
+|:----------------------------------------------------------------------|-------------------:|------------:|------------:|
+|(Intercept)                                                            |        4.808624e+22|          Inf|          Inf|
+|Gendermale                                                             |        4.000000e-01| 8.097510e-02| 2.764309e+01|
+|`Age at enrolment`                                                     |        8.200000e-01| 1.412435e+00| 3.616828e+00|
+|`Cell phone to receive confidential information`Yes                    |        9.900000e-01| 1.550341e-01| 4.638265e+01|
+|`Sexual orientation`prefer not to answer                               |        0.000000e+00| 0.000000e+00|          Inf|
+|`Sexual orientation`straight or heterosexual                           |        0.000000e+00| 0.000000e+00|          Inf|
+|`Number of completed school years`                                     |        8.500000e-01| 1.195318e+00| 4.536999e+00|
+|Occupationattending school                                             |        6.000000e-02| 4.783200e-03| 2.353135e+02|
+|Occupationnothing                                                      |        3.000000e-02| 7.466700e-03| 1.409950e+02|
+|`Marital status`married                                                |        0.000000e+00| 0.000000e+00|          Inf|
+|`Marital status`single                                                 |        0.000000e+00| 0.000000e+00|          Inf|
+|`Pregnant  or breastfeeding`Yes                                        |        5.600000e-01| 8.823370e-02| 3.451948e+01|
+|`Number of children`1                                                  |        1.610000e+00| 1.152813e-01| 2.179461e+02|
+|`Number of children`2 or 3                                             |        6.000000e-02| 4.977700e-03| 2.285021e+02|
+|`Number of correctly answered HIV knowledge questions (maximum 10)`    |        1.760000e+00| 2.107801e+00| 1.593470e+01|
+|`Contraception use`No                                                  |        0.000000e+00| 0.000000e+00|          Inf|
+|`Contraception use`Not currently sexually active                       |        5.350000e+00| 0.000000e+00|          Inf|
+|`Contraception use`Yes                                                 |        0.000000e+00| 0.000000e+00|          Inf|
+|`Expenses: transport`yes                                               |        2.290000e+00| 1.006414e+00| 9.734253e+01|
+|`Expenses: food`yes                                                    |        1.290000e+00| 1.240302e-01| 1.054195e+02|
+|`Years since HIV diagnosis`                                            |        6.900000e-01| 5.057362e-01| 7.894334e+00|
+|`Years since starting ART`                                             |        1.220000e+00| 1.791469e+00| 6.438983e+00|
+|`Years since HIV infection`                                            |        1.760000e+00| 1.603421e+00| 2.087733e+01|
+|`Current ART regimen`EFV-based                                         |        1.687700e+02| 1.082548e+71| 3.600601e+75|
+|`Current ART regimen`LPV/r-based                                       |        1.035717e+10|          Inf|          Inf|
+|`Current ART regimen`NVP-based                                         |        2.235000e+01| 3.375258e+07| 7.711470e+11|
+|`Currently on TB treatment`Yes                                         |        5.028742e+10|          Inf|          Inf|
+|`Baseline viral load`20-999                                            |        7.800000e+00| 7.077853e+01| 8.453104e+04|
+|`Baseline viral load`>999                                              |        1.900000e-01| 2.224390e-02| 6.538592e+01|
+|`How do you believe you were infected with HIV?`I don't know           |        1.160000e+00| 2.150432e-01| 4.752558e+01|
+|`How do you believe you were infected with HIV?`I prefer not to answer |        1.054006e+07|          Inf|          Inf|
+|`How do you believe you were infected with HIV?`vertical               |        4.000000e-02| 1.947950e-02| 5.615680e+01|
+
+
+The table shows that some baseline characteristics were different between the accepters and refusers (age, Number of completed school years, Number of correctly answered HIV knowledge questions (maximum 10), Expenses: transportyes, Years since starting ART, Years since HIV infection, Current ART regimenEFV-based, Current ART regimenNVP-based, Baseline viral load20-999). Valid estimation of the traditional per protocol effect would require adjustment for these and any other prognostic factors that predict compliance. As a result, the per protocol effect cannot be generally estimated via a traditional per protocol analysis that directly compares the outcomes of the PEBRA compliant participants and the controls. 
 
 ## Now, we conduct the first CACE analysis, using IV.
 
@@ -1395,43 +1534,18 @@ In the second stage, the effect of the PEBRA model on the outcome was estimated,
 
 
 ```r
-# In the 2SLS, we will estimate the predicted treatment in the first stage. We can do it by fitting logistic regression for PEBRA acceptance on randomization, important predictors, and then using the predict command to estimate the probabilities.
+# In the 2SLS, we will estimate the predicted treatment in the first stage. We can do it by fitting logistic regression for PEBRA acceptance on randomization, important predictors (see previous chapter), and then using the predict command to estimate the probabilities.
 
-df_cace %>% 
-  select("ARM", "complier","Gender","Age at enrolment","Cell phone to receive confidential information","Sexual orientation", "Number of completed school years", "Occupation", "Marital status", "Pregnant  or breastfeeding","Number of children","Contraception use","Number of correctly answered HIV knowledge questions (maximum 10)","Expenses: transport","Expenses: food","Years since HIV diagnosis","Years since starting ART","Years since HIV infection","Current ART regimen","Currently on TB treatment","Baseline viral load","How do you believe you were infected with HIV?")
-```
-
-```
-## # A tibble: 307 × 22
-##    ARM   complier Gender `Age at enrolment` Cell phone to receive confidential…¹
-##    <fct> <fct>    <fct>               <dbl> <fct>                               
-##  1 1     1        male                 15.4 No                                  
-##  2 1     1        male                 20.0 Yes                                 
-##  3 1     1        female               19.9 Yes                                 
-##  4 1     1        female               22.8 Yes                                 
-##  5 1     1        female               19.2 Yes                                 
-##  6 1     1        female               21.4 Yes                                 
-##  7 1     1        female               23.4 Yes                                 
-##  8 1     1        female               19.0 Yes                                 
-##  9 1     0        male                 18.5 Yes                                 
-## 10 1     1        male                 18.0 No                                  
-## # ℹ 297 more rows
-## # ℹ abbreviated name: ¹​`Cell phone to receive confidential information`
-## # ℹ 17 more variables: `Sexual orientation` <fct>,
-## #   `Number of completed school years` <dbl>, Occupation <fct>,
-## #   `Marital status` <fct>, `Pregnant  or breastfeeding` <fct>,
-## #   `Number of children` <fct>, `Contraception use` <fct>,
-## #   `Number of correctly answered HIV knowledge questions (maximum 10)` <dbl>, …
-```
-
-```r
 # Stage 1 of 2SLS
-s1 <- glm(complier ~ ARM + 
-            `Years since HIV diagnosis` 
-          + Gender
+s1 <- glm(complier ~ ARM 
+          + `Age at enrolment` 
           + `Number of completed school years`
-          + Occupation
+          + `Number of correctly answered HIV knowledge questions (maximum 10)`
+          + `Expenses: transport`
+          + `Years since starting ART`
+          + `Years since HIV infection` 
           + `Current ART regimen`
+          # + `Baseline viral load`
           , data = df_cace, family = binomial("logit"))
 ```
 
@@ -1443,10 +1557,19 @@ s1 <- glm(complier ~ ARM +
 df_cace$complier.new <- NA
 df_cace$complier.new <- predict(s1, type = "response")
 
-# In the second stage, we will fit the outcome model (the logistic regression) with the predicted treatment from the first stage and the confounders. Remember, we should use the robust sandwich SE to estimate the SE of the treatment effect correctly to account for the clustering effect of multiple observations per subject (Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. J Hum Resour. 2015;50(2):317-372.)
+# In the second stage, we will fit the outcome model (the logistic regression) with the predicted treatment from the first stage and the confounders. We should use the robust sandwich SE to estimate the SE of the treatment effect correctly to account for the clustering effect of multiple observations per subject (Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. J Hum Resour. 2015;50(2):317-372.)
 
 # Stage 2 of 2SLS
-fit.2sls <- glm(`Primary endpoint reached as per primary analysis` ~ complier.new + `Years since HIV diagnosis` + Gender, data = df_cace, family = binomial("logit"))
+fit.2sls <- glm(`Primary endpoint reached as per primary analysis` ~ complier.new 
+          + `Age at enrolment` 
+          + `Number of completed school years`
+          + `Number of correctly answered HIV knowledge questions (maximum 10)`
+          + `Expenses: transport`
+          + `Years since starting ART`
+          + `Years since HIV infection` 
+          + `Current ART regimen`
+          # + `Baseline viral load`
+          , data = df_cace, family = binomial("logit"))
 summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC0")
 ```
 
@@ -1464,35 +1587,91 @@ summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC
 <tbody>
   <tr>
    <td style="text-align:left;font-weight: bold;"> (Intercept) </td>
-   <td style="text-align:right;"> 1.41 </td>
-   <td style="text-align:right;"> 0.93 </td>
-   <td style="text-align:right;"> 2.16 </td>
-   <td style="text-align:right;"> 1.60 </td>
-   <td style="text-align:right;"> 0.11 </td>
+   <td style="text-align:right;"> 4.82 </td>
+   <td style="text-align:right;"> 0.37 </td>
+   <td style="text-align:right;"> 62.55 </td>
+   <td style="text-align:right;"> 1.20 </td>
+   <td style="text-align:right;"> 0.23 </td>
   </tr>
   <tr>
    <td style="text-align:left;font-weight: bold;"> complier.new </td>
-   <td style="text-align:right;"> 1.26 </td>
-   <td style="text-align:right;"> 0.76 </td>
-   <td style="text-align:right;"> 2.10 </td>
-   <td style="text-align:right;"> 0.90 </td>
-   <td style="text-align:right;"> 0.37 </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;font-weight: bold;"> `Years since HIV diagnosis` </td>
-   <td style="text-align:right;"> 1.01 </td>
-   <td style="text-align:right;"> 0.96 </td>
-   <td style="text-align:right;"> 1.07 </td>
+   <td style="text-align:right;"> 1.23 </td>
+   <td style="text-align:right;"> 0.73 </td>
+   <td style="text-align:right;"> 2.09 </td>
+   <td style="text-align:right;"> 0.78 </td>
    <td style="text-align:right;"> 0.44 </td>
-   <td style="text-align:right;"> 0.66 </td>
   </tr>
   <tr>
-   <td style="text-align:left;font-weight: bold;"> Gendermale </td>
+   <td style="text-align:left;font-weight: bold;"> `Age at enrolment` </td>
+   <td style="text-align:right;"> 0.94 </td>
+   <td style="text-align:right;"> 0.86 </td>
+   <td style="text-align:right;"> 1.03 </td>
+   <td style="text-align:right;"> -1.36 </td>
+   <td style="text-align:right;"> 0.17 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Number of completed school years` </td>
+   <td style="text-align:right;"> 0.97 </td>
+   <td style="text-align:right;"> 0.88 </td>
    <td style="text-align:right;"> 1.07 </td>
+   <td style="text-align:right;"> -0.60 </td>
+   <td style="text-align:right;"> 0.55 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Number of correctly answered HIV knowledge questions (maximum 10)` </td>
+   <td style="text-align:right;"> 1.05 </td>
+   <td style="text-align:right;"> 0.86 </td>
+   <td style="text-align:right;"> 1.27 </td>
+   <td style="text-align:right;"> 0.45 </td>
+   <td style="text-align:right;"> 0.65 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Expenses: transport`yes </td>
+   <td style="text-align:right;"> 0.70 </td>
+   <td style="text-align:right;"> 0.42 </td>
+   <td style="text-align:right;"> 1.16 </td>
+   <td style="text-align:right;"> -1.39 </td>
+   <td style="text-align:right;"> 0.17 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Years since starting ART` </td>
+   <td style="text-align:right;"> 0.98 </td>
+   <td style="text-align:right;"> 0.89 </td>
+   <td style="text-align:right;"> 1.08 </td>
+   <td style="text-align:right;"> -0.48 </td>
    <td style="text-align:right;"> 0.63 </td>
-   <td style="text-align:right;"> 1.82 </td>
-   <td style="text-align:right;"> 0.24 </td>
-   <td style="text-align:right;"> 0.81 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Years since HIV infection` </td>
+   <td style="text-align:right;"> 1.02 </td>
+   <td style="text-align:right;"> 0.96 </td>
+   <td style="text-align:right;"> 1.08 </td>
+   <td style="text-align:right;"> 0.53 </td>
+   <td style="text-align:right;"> 0.60 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Current ART regimen`EFV-based </td>
+   <td style="text-align:right;"> 1.24 </td>
+   <td style="text-align:right;"> 0.61 </td>
+   <td style="text-align:right;"> 2.53 </td>
+   <td style="text-align:right;"> 0.60 </td>
+   <td style="text-align:right;"> 0.55 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Current ART regimen`LPV/r-based </td>
+   <td style="text-align:right;"> 0.22 </td>
+   <td style="text-align:right;"> 0.04 </td>
+   <td style="text-align:right;"> 1.30 </td>
+   <td style="text-align:right;"> -1.67 </td>
+   <td style="text-align:right;"> 0.10 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> `Current ART regimen`NVP-based </td>
+   <td style="text-align:right;"> 1.02 </td>
+   <td style="text-align:right;"> 0.40 </td>
+   <td style="text-align:right;"> 2.65 </td>
+   <td style="text-align:right;"> 0.05 </td>
+   <td style="text-align:right;"> 0.96 </td>
   </tr>
 </tbody>
 <tfoot><tr><td style="padding: 0; " colspan="100%">
@@ -1501,8 +1680,169 @@ summ(fit.2sls, exp = T, confint = T, model.info = F, model.fit = F, robust = "HC
 
 ```r
 # as expected, result similar but uncertainty increased
+tab_model(fit.2sls)
 ```
+
+<table style="border-collapse:collapse; border:none;">
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">Primary endpoint reached<br>as per primary analysis</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Odds Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">p</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">(Intercept)</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">4.82</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.37&nbsp;&ndash;&nbsp;66.45</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.234</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">complier new</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.23</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.72&nbsp;&ndash;&nbsp;2.11</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.444</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Age at enrolment</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.94</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.86&nbsp;&ndash;&nbsp;1.03</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.164</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Number of completed<br>school years</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.97</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.88&nbsp;&ndash;&nbsp;1.07</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.537</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Number of correctly<br>answered HIV knowledge<br>questions (maximum 10)</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.05</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.86&nbsp;&ndash;&nbsp;1.27</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.655</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Expenses × transportyes</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.70</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.43&nbsp;&ndash;&nbsp;1.15</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.160</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Years since starting ART</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.98</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.89&nbsp;&ndash;&nbsp;1.07</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.621</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Years since HIV infection</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.02</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.96&nbsp;&ndash;&nbsp;1.08</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.584</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Current ART regimen<br>[EFV-based]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.24</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.60&nbsp;&ndash;&nbsp;2.53</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.551</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Current ART regimen<br>[LPV/r-based]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.22</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.03&nbsp;&ndash;&nbsp;1.18</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.098</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Current ART regimen<br>[NVP-based]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.02</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.39&nbsp;&ndash;&nbsp;2.68</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.961</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">307</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">R<sup>2</sup> Tjur</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.041</td>
+</tr>
+
+</table>
+
+```r
+tab_model(primary)
+```
+
+<table style="border-collapse:collapse; border:none;">
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">endpoint reached</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Odds Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">p</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">(Intercept)</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.93</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.26&nbsp;&ndash;&nbsp;2.97</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>0.003</strong></td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">DISTRICT [Leribe]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.71</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.34&nbsp;&ndash;&nbsp;1.49</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.370</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">DISTRICT [MKG]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.59</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.36&nbsp;&ndash;&nbsp;0.98</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>0.040</strong></td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">ARM [interv.]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.27</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.79&nbsp;&ndash;&nbsp;2.03</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.327</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">GENDER [male]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.11</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.66&nbsp;&ndash;&nbsp;1.88</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.688</td>
+</tr>
+<tr>
+<td colspan="4" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">&sigma;<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">3.29</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">&tau;<sub>00</sub> <sub>USER</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.00</td>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>USER</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">20</td>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">307</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.023 / NA</td>
+</tr>
+
+</table>
 
 ## Now, conduct the second CACE analysis (sensitivity analysis), using PS (check UMBRELLA/Zelen_SSc).
 
-## Re-consider primary endpoint definition re missing outcomes. And consider MICE for missing covariates (SPIN/UMBRELLA)
+## Re-consider primary endpoint definition re missing outcomes. Consider MICE for missing covariates (SPIN/UMBRELLA)
