@@ -664,14 +664,23 @@ df_dup <- rep(list(df), times = num_duplicates)
 df_dup <- do.call(rbind, df_dup)
 # Reset the row names if needed
 rownames(df_dup) <- NULL
-# Create a new column time and assign values 0 and 1 to each of the clones
+# Create a new column "time" and assign values 0 and 1 to each of the clones, corresponding to 0=baseline and 1=follow-up
 df_dup$time <- rep(0:1, each = nrow(df_dup) / 2)
-# Create the treatment variable by period/time
+# Add the baseline VL to the baseline clone
+# create same definition variable for baseline
+df_dup <- df_dup %>% 
+  mutate(baseline_endpoint_reached = case_when(baseline_Vl_cat == "<20" ~ 1,
+                                               baseline_Vl_cat == "20-999" | baseline_Vl_cat == ">999" ~ 0))
+df_dup <- df_dup %>% 
+  mutate(endpoint_reached = case_when(time == 0 ~ baseline_endpoint_reached,
+                           TRUE ~ endpoint_reached))
+# Create the treatment variable by period (=time)
 df_dup <- df_dup %>% 
   mutate(treat = case_when(ARM == "interv." & time == 1 ~ 1,
                            TRUE ~ 0))
-# df_dup %>% 
-#   select(time, USER, IND_ID, ARM, treat) %>% 
+
+# df_dup %>%
+#   select(time, USER, IND_ID, ARM, treat, endpoint_reached, baseline_endpoint_reached) %>%
 #   View()
 
 # constrained baseline analysis – inflexible correlation structure
@@ -684,7 +693,7 @@ fit <- glmer(endpoint_reached ~ time + treat + (1|USER) + (1|USER:time)
              + DISTRICT + GENDER 
               ,data = df_dup, 
               family = binomial(link = "logit"))
-tab_model(fit)
+tab_model(fit) # compare to primary below below!
 
 # class(fit)
 primary <- df %>% 

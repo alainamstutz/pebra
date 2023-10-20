@@ -395,14 +395,23 @@ df_dup <- rep(list(df), times = num_duplicates)
 df_dup <- do.call(rbind, df_dup)
 # Reset the row names if needed
 rownames(df_dup) <- NULL
-# Create a new column time and assign values 0 and 1 to each of the clones
+# Create a new column "time" and assign values 0 and 1 to each of the clones, corresponding to 0=baseline and 1=follow-up
 df_dup$time <- rep(0:1, each = nrow(df_dup) / 2)
-# Create the treatment variable by period/time
+# Add the baseline VL to the baseline clone
+# create same definition variable for baseline
+df_dup <- df_dup %>% 
+  mutate(baseline_endpoint_reached = case_when(baseline_Vl_cat == "<20" ~ 1,
+                                               baseline_Vl_cat == "20-999" | baseline_Vl_cat == ">999" ~ 0))
+df_dup <- df_dup %>% 
+  mutate(endpoint_reached = case_when(time == 0 ~ baseline_endpoint_reached,
+                           TRUE ~ endpoint_reached))
+# Create the treatment variable by period (=time)
 df_dup <- df_dup %>% 
   mutate(treat = case_when(ARM == "interv." & time == 1 ~ 1,
                            TRUE ~ 0))
-# df_dup %>% 
-#   select(time, USER, IND_ID, ARM, treat) %>% 
+
+# df_dup %>%
+#   select(time, USER, IND_ID, ARM, treat, endpoint_reached, baseline_endpoint_reached) %>%
 #   View()
 
 # constrained baseline analysis – inflexible correlation structure
@@ -415,7 +424,7 @@ fit <- glmer(endpoint_reached ~ time + treat + (1|USER) + (1|USER:time)
              + DISTRICT + GENDER 
               ,data = df_dup, 
               family = binomial(link = "logit"))
-tab_model(fit)
+tab_model(fit) # compare to primary below below!
 ```
 
 <table style="border-collapse:collapse; border:none;">
@@ -431,39 +440,39 @@ tab_model(fit)
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">(Intercept)</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.15</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.57&nbsp;&ndash;&nbsp;2.95</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.20</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.58&nbsp;&ndash;&nbsp;3.06</td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>&lt;0.001</strong></td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">time</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.89</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.60&nbsp;&ndash;&nbsp;1.33</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.579</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.96</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.64&nbsp;&ndash;&nbsp;1.45</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.861</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">treat</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.26</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.79&nbsp;&ndash;&nbsp;2.02</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.328</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.32</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.82&nbsp;&ndash;&nbsp;2.11</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.256</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">DISTRICT [Leribe]</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.71</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.42&nbsp;&ndash;&nbsp;1.20</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.205</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.04</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.60&nbsp;&ndash;&nbsp;1.82</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.884</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">DISTRICT [MKG]</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.59</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.41&nbsp;&ndash;&nbsp;0.84</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>0.004</strong></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.52</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.36&nbsp;&ndash;&nbsp;0.75</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>&lt;0.001</strong></td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">GENDER [male]</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.13</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.78&nbsp;&ndash;&nbsp;1.63</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.521</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.78</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.54&nbsp;&ndash;&nbsp;1.14</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.197</td>
 </tr>
 <tr>
 <td colspan="4" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
@@ -491,11 +500,11 @@ tab_model(fit)
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">2</td>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">614</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">580</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.021 / NA</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.038 / NA</td>
 </tr>
 
 </table>
@@ -836,20 +845,20 @@ print(results)
 ```
 
 ```
-##                     coefs odds_ratio std_errors   t_values    p_values
-## (Intercept)     0.7670249  2.1533503  0.1604972  4.7790535 0.000243701
-## time           -0.1127339  0.8933883  0.2033125 -0.5544860 0.587419108
-## treat           0.2345948  1.2643964  0.2398001  0.9782934 0.343444669
-## DISTRICTLeribe -0.3366685  0.7141456  0.2656842 -1.2671756 0.224413483
-## DISTRICTMKG    -0.5251990  0.5914377  0.1810931 -2.9001597 0.010991119
-## GENDERmale      0.1205764  1.1281470  0.1879055  0.6416864 0.530761089
+##                      coefs odds_ratio std_errors   t_values     p_values
+## (Intercept)     0.78726110  2.1973698  0.1695058  4.6444490 0.0003177417
+## time           -0.03641138  0.9642435  0.2082956 -0.1748063 0.8635694639
+## treat           0.27466393  1.3160883  0.2415836  1.1369314 0.2734040073
+## DISTRICTLeribe  0.04132790  1.0421938  0.2838550  0.1455951 0.8861795063
+## DISTRICTMKG    -0.65513516  0.5193719  0.1852236 -3.5369955 0.0029878936
+## GENDERmale     -0.24482039  0.7828451  0.1898316 -1.2896713 0.2166956712
 ##                lower_limit upper_limit
-## (Intercept)      1.5294881   3.0316792
-## time             0.5792135   1.3779768
-## treat            0.7584132   2.1079515
-## DISTRICTLeribe   0.4053676   1.2581267
-## DISTRICTMKG      0.4020456   0.8700469
-## GENDERmale       0.7558331   1.6838580
+## (Intercept)      1.5310718   3.1536300
+## time             0.6185465   1.5031458
+## treat            0.7864240   2.2024868
+## DISTRICTLeribe   0.5691025   1.9085627
+## DISTRICTMKG      0.3499623   0.7707892
+## GENDERmale       0.5223398   1.1732716
 ```
 
 
