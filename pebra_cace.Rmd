@@ -629,11 +629,62 @@ knitr::kable(tab,caption = "VLs of those out of window, by arm")
 For the analysis of the primary outcome, we will use a multi-level logistic regression model including clinic as a random effect, arm allocation and the randomisation stratification factor (district) as a fixed effect. **Gender was included in the analysis as a relevant baseline factors found to be randomly unbalanced between intervention and control arm**. Unavailability of a viral load or invalid VL result in the predefined primary endpoint window (for any reason) will be considered as failures. Results will be reported as odds ratios with 95% confidence intervals **and p-values**.
 
 ```{r echo=TRUE, message=FALSE}
-
 # use logit link to obtain ORs
-fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER), 
+fit <- glmer(endpoint_reached ~ ARM + (1|USER) + DISTRICT + GENDER, data = df,
+              family = binomial(link = "logit"))
+
+#### adjust for baseline VL, to increase power, use different methods (see https://www.bmj.com/content/360/bmj.k1121.long)
+# first, as naive adjustment
+fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER) + baseline_Vl_cat, 
               data = df, 
               family = binomial(link = "logit"))
+# mean cluster value
+df$VL_RESULT_baseline <- as.numeric(df$VL_RESULT_baseline)
+df <- df %>% 
+  mutate(baseline_Vl_num = case_when(baseline_Vl_cat == "<20" ~ 0,
+                                     baseline_Vl_cat == ">999" ~ VL_RESULT_baseline,
+                                     baseline_Vl_cat == "20-999" ~ VL_RESULT_baseline))
+result <- df %>%
+  group_by(USER) %>%
+  drop_na(baseline_Vl_num) %>% 
+  summarize(baseline_Vl_meanUSER = mean(baseline_Vl_num))
+df <- left_join(df, result[, c("baseline_Vl_meanUSER", "USER")], by = join_by(USER == USER)) ## merge imputed
+
+# individual-level ANCOVA with cluster-level adjustment
+fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER) + baseline_Vl_meanUSER, 
+              data = df, 
+              family = binomial(link = "logit"))
+
+## Now with Constrained baseline analysis
+# Define the number of times you want to duplicate the dataset
+num_duplicates <- 2
+# Duplicate the dataset
+df_dup <- rep(list(df), times = num_duplicates)
+# Combine the duplicated datasets into one
+df_dup <- do.call(rbind, df_dup)
+# Reset the row names if needed
+rownames(df_dup) <- NULL
+# Create a new column time and assign values 0 and 1 to each of the clones
+df_dup$time <- rep(0:1, each = nrow(df_dup) / 2)
+# Create the treatment variable by period/time
+df_dup <- df_dup %>% 
+  mutate(treat = case_when(ARM == "interv." & time == 1 ~ 1,
+                           TRUE ~ 0))
+# df_dup %>% 
+#   select(time, USER, IND_ID, ARM, treat) %>% 
+#   View()
+
+# constrained baseline analysis – inflexible correlation structure
+fit <- glmer(endpoint_reached ~ time + treat + (1|USER) 
+             + DISTRICT + GENDER 
+              ,data = df_dup, 
+              family = binomial(link = "logit"))
+# constrained baseline analysis – flexible correlation structure
+fit <- glmer(endpoint_reached ~ time + treat + (1|USER) + (1|USER:time)
+             + DISTRICT + GENDER 
+              ,data = df_dup, 
+              family = binomial(link = "logit"))
+tab_model(fit)
 
 # class(fit)
 primary <- df %>% 
@@ -654,13 +705,13 @@ summ(primary, exp = F, confint = F, model.info = F, model.fit = F, digits = 3)
 # summary(fit)$coefficients
 
 #confidence intervals
-confint <- exp(confint.merMod(fit,method="Wald"))
+confint <- exp(confint.merMod(primary,method="Wald"))
 confint <- t(confint[!rownames(confint)%in%c("(Intercept)",".sig01"),])
 
 data <- data.frame(
-  "odds ratio" = round(exp(fixef(fit)[names(fixef(fit))!="(Intercept)"]),2),
+  "odds ratio" = round(exp(fixef(primary)[names(fixef(primary))!="(Intercept)"]),2),
   "confidence interval" = paste_confint(confint),
-  "p-value" = round(summary(fit)$coefficients[,4][names(summary(fit)$coefficients[,4])!="(Intercept)"],3))
+  "p-value" = round(summary(primary)$coefficients[,4][names(summary(primary)$coefficients[,4])!="(Intercept)"],3))
 
 # ordering A on top
 data <- data[order(rownames(data)),]           

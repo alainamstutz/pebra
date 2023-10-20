@@ -354,10 +354,153 @@ For the analysis of the primary outcome, we will use a multi-level logistic regr
 
 ```r
 # use logit link to obtain ORs
-fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER), 
-              data = df, 
+fit <- glmer(endpoint_reached ~ ARM + (1|USER) + DISTRICT + GENDER, data = df,
               family = binomial(link = "logit"))
 
+#### adjust for baseline VL, to increase power, use different methods (see https://www.bmj.com/content/360/bmj.k1121.long)
+# first, as naive adjustment
+fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER) + baseline_Vl_cat, 
+              data = df, 
+              family = binomial(link = "logit"))
+# mean cluster value
+df$VL_RESULT_baseline <- as.numeric(df$VL_RESULT_baseline)
+df <- df %>% 
+  mutate(baseline_Vl_num = case_when(baseline_Vl_cat == "<20" ~ 0,
+                                     baseline_Vl_cat == ">999" ~ VL_RESULT_baseline,
+                                     baseline_Vl_cat == "20-999" ~ VL_RESULT_baseline))
+result <- df %>%
+  group_by(USER) %>%
+  drop_na(baseline_Vl_num) %>% 
+  summarize(baseline_Vl_meanUSER = mean(baseline_Vl_num))
+df <- left_join(df, result[, c("baseline_Vl_meanUSER", "USER")], by = join_by(USER == USER)) ## merge imputed
+
+# individual-level ANCOVA with cluster-level adjustment
+fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER) + baseline_Vl_meanUSER, 
+              data = df, 
+              family = binomial(link = "logit"))
+```
+
+```
+## Warning: Some predictor variables are on very different scales: consider
+## rescaling
+```
+
+```r
+## Now with Constrained baseline analysis
+# Define the number of times you want to duplicate the dataset
+num_duplicates <- 2
+# Duplicate the dataset
+df_dup <- rep(list(df), times = num_duplicates)
+# Combine the duplicated datasets into one
+df_dup <- do.call(rbind, df_dup)
+# Reset the row names if needed
+rownames(df_dup) <- NULL
+# Create a new column time and assign values 0 and 1 to each of the clones
+df_dup$time <- rep(0:1, each = nrow(df_dup) / 2)
+# Create the treatment variable by period/time
+df_dup <- df_dup %>% 
+  mutate(treat = case_when(ARM == "interv." & time == 1 ~ 1,
+                           TRUE ~ 0))
+# df_dup %>% 
+#   select(time, USER, IND_ID, ARM, treat) %>% 
+#   View()
+
+# constrained baseline analysis – inflexible correlation structure
+fit <- glmer(endpoint_reached ~ time + treat + (1|USER) 
+             + DISTRICT + GENDER 
+              ,data = df_dup, 
+              family = binomial(link = "logit"))
+# constrained baseline analysis – flexible correlation structure
+fit <- glmer(endpoint_reached ~ time + treat + (1|USER) + (1|USER:time)
+             + DISTRICT + GENDER 
+              ,data = df_dup, 
+              family = binomial(link = "logit"))
+tab_model(fit)
+```
+
+<table style="border-collapse:collapse; border:none;">
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">endpoint reached</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Odds Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">p</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">(Intercept)</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.15</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.57&nbsp;&ndash;&nbsp;2.95</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>&lt;0.001</strong></td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">time</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.89</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.60&nbsp;&ndash;&nbsp;1.33</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.579</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">treat</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.26</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.79&nbsp;&ndash;&nbsp;2.02</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.328</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">DISTRICT [Leribe]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.71</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.42&nbsp;&ndash;&nbsp;1.20</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.205</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">DISTRICT [MKG]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.59</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.41&nbsp;&ndash;&nbsp;0.84</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  "><strong>0.004</strong></td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">GENDER [male]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.13</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.78&nbsp;&ndash;&nbsp;1.63</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.521</td>
+</tr>
+<tr>
+<td colspan="4" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">&sigma;<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">3.29</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">&tau;<sub>00</sub> <sub>USER:time</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.00</td>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">&tau;<sub>00</sub> <sub>USER</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.00</td>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>USER</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">20</td>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>time</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">2</td>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">614</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">0.021 / NA</td>
+</tr>
+
+</table>
+
+```r
 # class(fit)
 primary <- df %>% 
   glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER), 
@@ -629,13 +772,13 @@ summ(primary, exp = F, confint = F, model.info = F, model.fit = F, digits = 3)
 # summary(fit)$coefficients
 
 #confidence intervals
-confint <- exp(confint.merMod(fit,method="Wald"))
+confint <- exp(confint.merMod(primary,method="Wald"))
 confint <- t(confint[!rownames(confint)%in%c("(Intercept)",".sig01"),])
 
 data <- data.frame(
-  "odds ratio" = round(exp(fixef(fit)[names(fixef(fit))!="(Intercept)"]),2),
+  "odds ratio" = round(exp(fixef(primary)[names(fixef(primary))!="(Intercept)"]),2),
   "confidence interval" = paste_confint(confint),
-  "p-value" = round(summary(fit)$coefficients[,4][names(summary(fit)$coefficients[,4])!="(Intercept)"],3))
+  "p-value" = round(summary(primary)$coefficients[,4][names(summary(primary)$coefficients[,4])!="(Intercept)"],3))
 
 # ordering A on top
 data <- data[order(rownames(data)),]           
@@ -694,17 +837,19 @@ print(results)
 
 ```
 ##                     coefs odds_ratio std_errors   t_values    p_values
-## (Intercept)     0.6584987  1.9318898  0.2189169  3.0079852 0.008828004
-## DISTRICTLeribe -0.3369242  0.7139630  0.3760493 -0.8959575 0.384428682
-## DISTRICTMKG    -0.5274376  0.5901151  0.2563479 -2.0575073 0.057456319
-## ARMinterv.      0.2358977  1.2660448  0.2404740  0.9809697 0.342165901
-## GENDERmale      0.1070197  1.1129561  0.2666882  0.4012913 0.693864326
+## (Intercept)     0.7670249  2.1533503  0.1604972  4.7790535 0.000243701
+## time           -0.1127339  0.8933883  0.2033125 -0.5544860 0.587419108
+## treat           0.2345948  1.2643964  0.2398001  0.9782934 0.343444669
+## DISTRICTLeribe -0.3366685  0.7141456  0.2656842 -1.2671756 0.224413483
+## DISTRICTMKG    -0.5251990  0.5914377  0.1810931 -2.9001597 0.010991119
+## GENDERmale      0.1205764  1.1281470  0.1879055  0.6416864 0.530761089
 ##                lower_limit upper_limit
-## (Intercept)      1.2115353    3.080552
-## DISTRICTLeribe   0.3203137    1.591387
-## DISTRICTMKG      0.3416973    1.019136
-## ARMinterv.       0.7583119    2.113734
-## GENDERmale       0.6303924    1.964921
+## (Intercept)      1.5294881   3.0316792
+## time             0.5792135   1.3779768
+## treat            0.7584132   2.1079515
+## DISTRICTLeribe   0.4053676   1.2581267
+## DISTRICTMKG      0.4020456   0.8700469
+## GENDERmale       0.7558331   1.6838580
 ```
 
 
