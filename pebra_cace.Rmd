@@ -632,6 +632,7 @@ For the analysis of the primary outcome, we will use a multi-level logistic regr
 # use logit link to obtain ORs
 fit <- glmer(endpoint_reached ~ ARM + (1|USER) + DISTRICT + GENDER, data = df,
               family = binomial(link = "logit"))
+saveRDS(df, file = "df_pebra.RData")
 
 #### adjust for baseline VL, to increase power, use different methods (see https://www.bmj.com/content/360/bmj.k1121.long)
 # first, as naive adjustment
@@ -648,7 +649,7 @@ result <- df %>%
   group_by(USER) %>%
   drop_na(baseline_Vl_num) %>% 
   summarize(baseline_Vl_meanUSER = mean(baseline_Vl_num))
-df <- left_join(df, result[, c("baseline_Vl_meanUSER", "USER")], by = join_by(USER == USER)) ## merge imputed
+df <- left_join(df, result[, c("baseline_Vl_meanUSER", "USER")], by = join_by(USER == USER)) ## merge
 
 # individual-level ANCOVA with cluster-level adjustment
 fit <- glmer(endpoint_reached ~ DISTRICT + ARM + GENDER + (1|USER) + baseline_Vl_meanUSER, 
